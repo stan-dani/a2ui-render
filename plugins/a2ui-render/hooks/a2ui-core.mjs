@@ -75,18 +75,30 @@ export function parseA2UI(src) {
 
 // Apply messages in order. Supports A2UI 1.0/0.9 names and 0.8 names.
 export function buildSurfaces(messages) {
-  const surfaces = new Map()
+  return [...applyMessages(new Map(), messages).values()]
+}
+
+// Apply messages onto an existing Map of surfaces (surfaceId -> surface), so a later
+// message can update a surface an earlier one created. Returns the same Map.
+//
+// a2ui-render extensions on createSurface: `placement` ("inline" | "pane" | "band"),
+// `title` (pane tab title), `refresh` ({file, every}: reread A2UI messages from a file).
+export function applyMessages(surfaces, messages) {
   const get = (id = 'default') => {
-    if (!surfaces.has(id)) surfaces.set(id, { id, components: new Map(), data: {}, root: 'root', catalogId: null, theme: null })
+    if (!surfaces.has(id)) surfaces.set(id, { id, components: new Map(), data: {}, root: 'root', catalogId: null, theme: null, placement: 'inline', title: null, refresh: null })
     return surfaces.get(id)
   }
   for (const m of messages) {
     if (!m || typeof m !== 'object') continue
     if (m.createSurface) {
-      const s = get(m.createSurface.surfaceId)
-      s.catalogId = m.createSurface.catalogId ?? null
-      if (m.createSurface.theme !== undefined) s.theme = m.createSurface.theme
-      if (m.createSurface.root) s.root = m.createSurface.root
+      const cs = m.createSurface
+      const s = get(cs.surfaceId)
+      s.catalogId = cs.catalogId ?? null
+      if (cs.root) s.root = cs.root
+      if (cs.theme !== undefined) s.theme = cs.theme
+      if (['inline', 'pane', 'band'].includes(cs.placement)) s.placement = cs.placement
+      if (typeof cs.title === 'string') s.title = cs.title
+      if (cs.refresh && typeof cs.refresh === 'object') s.refresh = cs.refresh
     }
     const uc = m.updateComponents ?? m.surfaceUpdate
     if (uc) {
@@ -113,7 +125,31 @@ export function buildSurfaces(messages) {
     if (m.beginRendering) get(m.beginRendering.surfaceId).root = m.beginRendering.root ?? 'root'
     if (m.deleteSurface) surfaces.delete(m.deleteSurface.surfaceId)
   }
-  return [...surfaces.values()]
+  return surfaces
+}
+
+// a2ui-render's own messages, which aren't about one surface:
+//   {"toast": {"text": "...", "tone": "success"}}
+//   {"status": {"text": "..."}}  or  {"status": null} to clear it
+export function noticesOf(messages) {
+  const out = { toasts: [], status: undefined, deleted: [] }
+  for (const m of messages) {
+    if (!m || typeof m !== 'object') continue
+    if (m.toast && typeof m.toast.text === 'string') out.toasts.push({ text: m.toast.text, tone: m.toast.tone ?? 'info' })
+    if ('status' in m) out.status = m.status && typeof m.status.text === 'string' ? m.status.text : null
+    if (m.deleteSurface?.surfaceId) out.deleted.push(m.deleteSurface.surfaceId)
+  }
+  return out
+}
+
+// All closed A2UI blocks in a reply, parsed. Blocks that don't parse are skipped.
+export function blocksOf(markdown) {
+  const out = []
+  for (const seg of splitSegments(markdown)) {
+    if (seg.kind !== 'a2ui' || !seg.closed) continue
+    try { out.push(parseA2UI(seg.text)) } catch (err) { /* skipped */ }
+  }
+  return out
 }
 
 function fromV08Contents(list) {

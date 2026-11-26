@@ -1,7 +1,7 @@
 {
   "name": "a2ui-render",
   "displayName": "A2UI Render (unofficial)",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "description": "Render A2UI surfaces from Claude's replies as native, interactive UI in Claude Code (Desktop Code tab and terminal). Button actions go back to Claude.",
   "author": {
     "name": "a2ui-render contributors"

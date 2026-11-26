@@ -41,6 +41,28 @@ Each demo makes Claude reply with a fixed surface. Press a button and Claude get
 | `/a2ui-render:demo-settings` | Settings split into tabs |
 | `/a2ui-render:demo-confirm` | A confirmation for a destructive action, in red |
 | `/a2ui-render:demo-swipe` | Card carousels: triage 8 issues with Back / Next and choices you can revisit, and browse name ideas in a loop |
+| `/a2ui-render:demo-pane` | A build dashboard in the **side pane** that updates live from `.a2ui/dashboard.jsonl` |
+| `/a2ui-render:demo-band` | A quick question in the **band above the prompt**, with a toast and a status line |
+
+### Commands that don't ask Claude
+
+| Command | What it does |
+|---|---|
+| `/a2ui-gallery [demo]` | Opens all demos in a side pane, drawn locally: no Claude turn, no tokens. Buttons show what they would send |
+| `/a2ui-pane` | Reopens the last side-pane form |
+| `/a2ui-clear` | Closes a2ui panes, clears the band and the status line, stops refresh timers |
+| `/a2ui-doctor` | Shows the plugin and Claude Code versions |
+
+### Try the live dashboard
+
+Run `/a2ui-render:demo-pane`, then in a terminal in the project folder:
+
+```bash
+mkdir -p .a2ui
+echo '{"version":"1.0","updateDataModel":{"surfaceId":"live-dash","path":"/tests","value":"1,300"}}' > .a2ui/dashboard.jsonl
+```
+
+Within 5 seconds the pane shows 1,300 tests. Any script (CI poller, log tailer) can keep that file current. The mod only reads files inside `.a2ui/`, only applies messages for that pane's surface, and never runs commands.
 
 After that, just ask for things where a form helps, for example "help me set up a new project, ask me the details with a form". The `a2ui` skill tells Claude when and how to answer with a surface.
 
@@ -67,6 +89,10 @@ The mod hooks the `AssistantMessage` render site, only for messages with an `a2u
 ## Troubleshooting
 
 If you see Claude's raw reply (a summary and JSON) instead of a form in the Code tab, the mod didn't draw. Type `/a2ui-doctor` in the session: it prints the plugin and Claude Code versions. Please open an issue with that output.
+
+## Where forms can appear
+
+Besides inside Claude's message, a form can open in the **side pane** (`"placement": "pane"`, updated in place by later replies or a refresh file) or the **band above the prompt** (`"placement": "band"`). Claude can also show a **toast** or set the **status line**, and while Claude writes a form the **spinner** says "building form…". The `a2ui` skill documents all of it for Claude.
 
 ## Where it shows
 

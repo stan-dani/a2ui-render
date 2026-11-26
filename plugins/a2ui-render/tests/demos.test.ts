@@ -10,7 +10,7 @@ const site = (text: string, surface: 'terminal' | 'desktop', id: string) => ({
   props: { text: '```a2ui\n' + text + '\n```', isSummary: false },
 } as const)
 
-for (const d of demos) {
+for (const d of demos.filter((x) => !x.placed)) {
   for (const surface of ['desktop', 'terminal'] as const) {
     test(`${d.name} draws on ${surface} and its primary button reaches Claude`, async ($, on) => {
       const sent: string[] = []

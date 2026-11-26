@@ -1,0 +1,4 @@
+{"version":"1.0","createSurface":{"surfaceId":"run-tests","catalogId":"https://github.com/stan-dani/a2ui-render/catalog/v1","theme":"clean","placement":"band","title":"Quick question"}}
+{"version":"1.0","updateComponents":{"surfaceId":"run-tests","components":[{"id":"root","component":"Row","children":["q","yes","no"]},{"id":"q","component":"Text","text":"Run the test suite now?","variant":"h4"},{"id":"yes","component":"Button","child":"yes_t","action":{"event":{"name":"run_tests"}},"variant":"primary"},{"id":"yes_t","component":"Text","text":"Run tests"},{"id":"no","component":"Button","child":"no_t","action":{"event":{"name":"skip_tests"}}},{"id":"no_t","component":"Text","text":"Not now"}]}}
+{"version":"1.0","toast":{"text":"Claude has a quick question for you","tone":"info"}}
+{"version":"1.0","status":{"text":"a2ui: waiting for your answer above the prompt"}}

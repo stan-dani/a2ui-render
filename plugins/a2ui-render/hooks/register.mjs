@@ -14,7 +14,8 @@
 // Works in the Code tab of the Claude Desktop app and in the terminal. Claude and the
 // transcript keep the raw JSON; only the drawing changes.
 
-import { parseA2UI, buildSurfaces, splitSegments, resolveValue, pointerGet, pointerSet, joinPath } from './a2ui-core.mjs'
+import { parseA2UI, buildSurfaces, applyMessages, noticesOf, blocksOf, splitSegments, resolveValue, pointerGet, pointerSet, joinPath } from './a2ui-core.mjs'
+import { DEMOS } from './demos.mjs'
 import { resolveTheme, initialsOf } from './themes.mjs'
 import { surfaceToMarkdown } from './plain.mjs'
 
@@ -27,23 +28,182 @@ const FALLBACK = /<!--\s*a2ui:fallback\s*-->[\s\S]*?<!--\s*\/a2ui:fallback\s*-->
 // Per-surface live state, keyed by `${messageId}:${surfaceId}`.
 const live = new Map()
 
+// Surfaces that live outside one message (side pane, band above the prompt), by
+// surfaceId. Later replies update them in place; so does a refresh file.
+const placed = new Map()
+const placedState = new Map()
+const PANE_PREFIX = 'a2ui-pane-'
+const GALLERY = 'a2ui-gallery'
+let bandId = null
+let lastPaneId = null
+let streamingForm = false
+let gallery = { index: 0 }
+const refresh = new Map() // surfaceId -> { timer, file, every, at, error }
+
+function stateFor(sid) {
+  if (!placedState.has(sid)) {
+    placedState.set(sid, {
+      get data() { return placed.get(sid)?.data ?? {} },
+      set data(v) { const s = placed.get(sid); if (s) s.data = v },
+      sent: null, tab: {}, carousel: {},
+    })
+  }
+  return placedState.get(sid)
+}
+const clock = (t) => { const d = new Date(t); return [d.getHours(), d.getMinutes(), d.getSeconds()].map((n) => String(n).padStart(2, '0')).join(':') }
+const SAFE_FILE = /^\.a2ui\/[\w.\-\/]+$/
+
 export function register(on, options = {}) {
   const sendMode = String(options.send_as ?? 'mod')
+
   const settings = { theme: String(options.theme ?? 'clean'), accent: String(options.accent ?? 'orange') }
 
   on('session.start', async ($, e, next) => {
-    try {
-      await $.command.register({ name: 'a2ui-doctor', description: 'a2ui-render: show the plugin and Claude Code versions', immediate: true })
-    } catch (err) {
-      // Drawing works without the command.
-    }
+    // Each command on its own: a refused one (say, a name taken) doesn't stop the rest.
+    try { await $.command.register({ name: 'a2ui-doctor', description: 'a2ui-render: show the plugin and Claude Code versions', immediate: true }) } catch (err) {}
+    try { await $.command.register({ name: 'a2ui-gallery', description: 'a2ui-render: open the demo gallery in a side pane (no Claude turn)', argumentHint: '[demo]', immediate: true }) } catch (err) {}
+    try { await $.command.register({ name: 'a2ui-pane', description: 'a2ui-render: reopen the last side-pane form', immediate: true }) } catch (err) {}
+    try { await $.command.register({ name: 'a2ui-clear', description: 'a2ui-render: close a2ui panes, clear the band and the status line', immediate: true }) } catch (err) {}
     return next(e)
+  })
+
+  on('command.run', { command: 'a2ui-gallery' }, async ($, e) => {
+    const want = String(e.args ?? '').trim().replace(/^demo-?/, '')
+    const i = DEMOS.findIndex((d) => d.name === want || d.name === 'demo-' + want)
+    if (i >= 0) gallery = { index: i }
+    await $.ui.open({ id: GALLERY, title: 'A2UI gallery', focus: true, closeOnEscape: true })
+    $.ui.invalidate('ui.render')
+    return {}
+  })
+
+  on('command.run', { command: 'a2ui-pane' }, async ($) => {
+    if (!lastPaneId || !placed.has(lastPaneId)) return { text: 'No side-pane form yet. Ask Claude for one, or run /a2ui-gallery.' }
+    await $.ui.open({ id: PANE_PREFIX + lastPaneId, title: placed.get(lastPaneId).title ?? lastPaneId, focus: true, closeOnEscape: true })
+    return {}
+  })
+
+  on('command.run', { command: 'a2ui-clear' }, async ($) => {
+    for (const sid of placed.keys()) { try { await $.ui.close({ id: PANE_PREFIX + sid }) } catch (err) {} }
+    try { await $.ui.close({ id: GALLERY }) } catch (err) {}
+    for (const r of refresh.values()) { try { r.timer?.cancel?.() } catch (err) {} }
+    refresh.clear()
+    bandId = null
+    try { await $.ui.status(null) } catch (err) { try { await $.ui.status('') } catch (err2) {} }
+    $.ui.invalidate('ui.render')
+    return { text: 'Cleared a2ui panes, the band and the status line.' }
+  })
+
+  // When a reply is complete: update forms that live outside messages, open panes, show
+  // the band, run toasts and the status line, and start refresh timers. Doing this once
+  // per turn (not on every redraw) keeps toasts from repeating.
+  on('turn.complete', async ($, e, next) => {
+    streamingForm = false
+    try {
+      const answer = typeof e.answer === 'string' ? e.answer : ''
+      for (const msgs of blocksOf(answer)) {
+        const touched = new Set()
+        for (const m of msgs) {
+          const sid = m?.createSurface?.surfaceId ?? m?.updateComponents?.surfaceId ?? m?.updateDataModel?.surfaceId ?? m?.surfaceUpdate?.surfaceId ?? m?.dataModelUpdate?.surfaceId
+          if (sid) touched.add(sid)
+        }
+        applyMessages(placed, msgs)
+        const notices = noticesOf(msgs)
+        for (const sid of notices.deleted) {
+          try { await $.ui.close({ id: PANE_PREFIX + sid }) } catch (err) {}
+          if (bandId === sid) bandId = null
+          refresh.get(sid)?.timer?.cancel?.()
+          refresh.delete(sid)
+        }
+        for (const sid of touched) {
+          const s = placed.get(sid)
+          if (!s) continue
+          if (s.placement === 'pane') {
+            lastPaneId = sid
+            try { await $.ui.open({ id: PANE_PREFIX + sid, title: s.title ?? sid }) } catch (err) {}
+          } else if (s.placement === 'band') {
+            bandId = sid
+            stateFor(sid).sent = null
+          }
+          if (s.refresh && s.placement !== 'inline') {
+            const file = String(s.refresh.file ?? '')
+            const every = Math.min(3600, Math.max(2, Number(s.refresh.every) || 10))
+            const old = refresh.get(sid)
+            if (SAFE_FILE.test(file) && !file.includes('..') && !(old && old.file === file && old.every === every)) {
+              old?.timer?.cancel?.()
+              const entry = { file, every, at: null, error: null, timer: null }
+              entry.timer = $.clock.every(every * 1000, async () => {
+                try {
+                  const got = await $.fs.read(file)
+                  const text = typeof got === 'string' ? got : String(got?.text ?? got?.content ?? '')
+                  // Only messages for this surface; a file can't touch other forms.
+                  const mine = parseA2UI(text).filter((m) => [m?.updateComponents, m?.updateDataModel, m?.createSurface].some((x) => x && x.surfaceId === sid))
+                  applyMessages(placed, mine.map((m) => (m.createSurface ? { ...m, createSurface: { ...m.createSurface, placement: s.placement, refresh: s.refresh } } : m)))
+                  entry.at = Date.now()
+                  entry.error = null
+                } catch (err) {
+                  entry.error = String(err?.message ?? err)
+                }
+                $.ui.invalidate('ui.render')
+              })
+              refresh.set(sid, entry)
+            }
+          }
+        }
+        for (const t of notices.toasts) { try { await $.ui.toast(t.text) } catch (err) {} }
+        if (notices.status !== undefined) { try { await $.ui.status(notices.status) } catch (err) {} }
+      }
+    } catch (err) {
+      // A bad block never breaks the turn.
+    }
+    $.ui.invalidate('ui.render')
+    return next(e)
+  })
+
+  // The side pane: forms with "placement": "pane", and the demo gallery.
+  on('ui.render', { component: 'Pane' }, async ($, e, next) => {
+    const rid = String(e.requestId ?? '')
+    if (rid !== GALLERY && !rid.startsWith(PANE_PREFIX)) return next(e)
+    try {
+      const els = $.ui.resolve(e)
+      const io = {
+        redraw: () => $.ui.invalidate('ui.render'),
+        submit: (text) => (sendMode === 'user' ? $.prompt.submit({ text, asUser: true }) : $.prompt.submit({ text })),
+        toast: (text) => { try { const p = $.ui.toast(text); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
+        openPane: (sid, title) => { try { const p = $.ui.open({ id: PANE_PREFIX + sid, title: title ?? sid, focus: true, closeOnEscape: true }); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
+      }
+      return rid === GALLERY ? renderGallery(e, els, io, settings) : renderPlaced(e, els, io, settings, rid.slice(PANE_PREFIX.length))
+    } catch (err) {
+      return next(e)
+    }
+  })
+
+  // The band above the prompt: the latest form with "placement": "band", until answered.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (!bandId || !placed.has(bandId) || stateFor(bandId).sent) return next(e)
+    try {
+      const els = $.ui.resolve(e)
+      const io = {
+        redraw: () => $.ui.invalidate('ui.render'),
+        submit: (text) => (sendMode === 'user' ? $.prompt.submit({ text, asUser: true }) : $.prompt.submit({ text })),
+        toast: (text) => { try { const p = $.ui.toast(text); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
+        openPane: (sid, title) => { try { const p = $.ui.open({ id: PANE_PREFIX + sid, title: title ?? sid, focus: true, closeOnEscape: true }); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
+      }
+      return renderPlaced(e, els, io, settings, bandId, true)
+    } catch (err) {
+      return next(e)
+    }
+  })
+
+  // Claude Code's own spinner: say when Claude is writing a form.
+  on('ui.render', { component: 'Spinner' }, async ($, e, next) => {
+    if (!streamingForm) return next(e)
+    return next({ ...e, props: { ...e.props, suffix: ' · building form…' } })
   })
 
   on('command.run', { command: 'a2ui-doctor' }, async ($) => {
     let version = 'unknown'
     try { const v = await $.session.version(); version = typeof v === 'string' ? v : JSON.stringify(v) } catch (err) {}
-    return { text: `a2ui-render 0.5.1 · Claude Code ${version} · theme ${settings.theme}, accent ${settings.accent}` }
+    return { text: `a2ui-render 0.6.0 · Claude Code ${version} · theme ${settings.theme}, accent ${settings.accent}` }
   })
 
   on('ui.render', { component: 'AssistantMessage', props: { text: FENCE } }, async ($, e, next) => {
@@ -56,6 +216,8 @@ export function register(on, options = {}) {
       const io = {
         redraw: () => $.ui.invalidate('ui.render'),
         submit: (text) => (sendMode === 'user' ? $.prompt.submit({ text, asUser: true }) : $.prompt.submit({ text })),
+        toast: (text) => { try { const p = $.ui.toast(text); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
+        openPane: (sid, title) => { try { const p = $.ui.open({ id: PANE_PREFIX + sid, title: title ?? sid, focus: true, closeOnEscape: true }); if (p && p.catch) p.catch(() => {}) } catch (err) {} },
       }
       const tree = renderMessage(e, els, io, settings)
       return tree ?? next(e)
@@ -87,6 +249,7 @@ function renderMessage(e, els, io, settings) {
       return
     }
     if (!seg.closed) {
+      streamingForm = true
       children.push(Text({ key: `building-${i}`, dimColor: true, children: ['◆ Building UI…'] }))
       return
     }
@@ -105,15 +268,93 @@ function renderMessage(e, els, io, settings) {
         children.push(Markdown({ key: `plain-${id}`, text: surfaceToMarkdown(s).slice(0, MAX_MARKDOWN) || '(form)' }))
         continue
       }
+      if (s.placement === 'pane' || s.placement === 'band') {
+        // Drawn in the side pane or above the prompt; the message gets a small pointer.
+        const title = s.title ?? s.id
+        const where = s.placement === 'pane' ? 'in the side pane' : 'above the prompt'
+        children.push(els.Box({
+          key: `chip-${id}`, flexDirection: 'row', columnGap: 'sm', alignItems: 'center',
+          children: [
+            Text({ key: `chip-${id}:t`, dimColor: true, children: [`${s.placement === 'pane' ? '◧' : '▤'} ${title} — shown ${where}`] }),
+            ...(s.placement === 'pane' ? [els.Button({ key: `chip-${id}:open`, label: 'Open', plain: true, onPress: () => io.openPane(s.id, title) })] : []),
+          ],
+        }))
+        continue
+      }
       if (!live.has(id)) live.set(id, { data: structuredClone(s.data), sent: null, tab: {}, carousel: {} })
       const state = live.get(id)
       const theme = resolveTheme(s.theme, settings, surfaceKind)
-      const ctx = { els, surface: s, state, id, columns, theme, redraw: io.redraw, submit: io.submit }
+      const ctx = { els, surface: s, state, id, columns, theme, redraw: io.redraw, submit: io.submit, toast: io.toast }
       children.push(renderSurface(ctx))
     }
   })
 
   return Box({ key: `a2ui-msg-${msgId}`, flexDirection: 'column', rowGap: 'sm', children })
+}
+
+// A form that lives outside a message: in the side pane, or in the band above the prompt.
+function renderPlaced(e, els, io, settings, sid, isBand = false) {
+  const { Box, Text, Button } = els
+  const s = placed.get(sid)
+  if (!s) return Text({ key: `gone-${sid}`, dimColor: true, children: ['This form is no longer available. Run /a2ui-pane or ask Claude again.'] })
+  const surfaceKind = e.surface === 'terminal' ? 'terminal' : 'desktop'
+  const columns = Math.max(24, Math.min(120, (e.props?.bodyColumns ?? e.viewport?.columns ?? 60) - 2))
+  const state = stateFor(sid)
+  const theme = resolveTheme(s.theme, settings, surfaceKind)
+  const ctx = {
+    els, surface: s, state, id: `${isBand ? 'band' : 'pane'}:${sid}`, columns, theme,
+    redraw: io.redraw, toast: io.toast,
+    submit: (text) => { const p = io.submit(text); if (isBand) io.redraw(); return p },
+  }
+  const parts = [renderSurface(ctx)]
+  const r = refresh.get(sid)
+  if (r) {
+    parts.push(Text({
+      key: `${ctx.id}:refresh`, dimColor: true, size: 'footnote',
+      children: [r.error ? `↻ ${r.file}: ${r.error}` : r.at ? `↻ every ${r.every} s from ${r.file} · updated ${clock(r.at)}` : `↻ waiting for ${r.file}`],
+    }))
+  }
+  if (isBand) {
+    return Box({
+      key: `band-${sid}`, flexDirection: 'row', columnGap: 'sm', alignItems: 'flex-start',
+      children: [
+        Box({ key: `band-${sid}:body`, flexDirection: 'column', flexGrow: 1, children: parts }),
+        Button({ key: `band-${sid}:close`, label: '✕', plain: true, onPress: () => { bandId = null; io.redraw() } }),
+      ],
+    })
+  }
+  return Box({ key: `placed-${sid}`, flexDirection: 'column', rowGap: 'sm', children: parts })
+}
+
+// The demo gallery pane: every demo, drawn locally. Buttons show a toast instead of
+// sending anything to Claude.
+function renderGallery(e, els, io, settings) {
+  const { Box, Text, Button } = els
+  const surfaceKind = e.surface === 'terminal' ? 'terminal' : 'desktop'
+  const columns = Math.max(24, Math.min(120, (e.props?.bodyColumns ?? e.viewport?.columns ?? 60) - 2))
+  const demo = DEMOS[Math.min(gallery.index, DEMOS.length - 1)]
+  const picker = Box({
+    key: 'gallery:picker', flexDirection: 'row', columnGap: 'md', flexWrap: 'wrap',
+    children: DEMOS.map((d, i) => Button({
+      key: 'gallery:pick:' + d.name, plain: true, dimColor: i !== gallery.index,
+      label: i === gallery.index ? `▍${d.short}` : d.short,
+      onPress: () => { gallery = { index: i }; io.redraw() },
+    })),
+  })
+  const children = [picker, Text({ key: 'gallery:hint', dimColor: true, size: 'footnote', children: [`/a2ui-render:${demo.name} sends the same form through Claude. Here, buttons only show what they would send.`] })]
+  let surfaces = []
+  try { surfaces = buildSurfaces(parseA2UI(demo.body)) } catch (err) {}
+  for (const s of surfaces) {
+    const id = `gallery:${demo.name}:${s.id}`
+    if (!live.has(id)) live.set(id, { data: structuredClone(s.data), sent: null, tab: {}, carousel: {} })
+    const ctx = {
+      els, surface: s, state: live.get(id), id, columns, theme: resolveTheme(s.theme, settings, surfaceKind),
+      redraw: io.redraw, toast: () => {},
+      submit: (text) => { const name = /"name": "([^"]+)"/.exec(text)?.[1] ?? 'action'; io.toast(`Demo: “${name}” would be sent to Claude`); return undefined },
+    }
+    children.push(renderSurface(ctx))
+  }
+  return Box({ key: 'gallery', flexDirection: 'column', rowGap: 'sm', children })
 }
 
 function renderSurface(ctx) {
@@ -592,4 +833,5 @@ function pressButton(ctx, c, scope) {
   // Waits until Claude is idle, then starts a turn. Don't block the press handler on it.
   const p = ctx.submit(text)
   if (p && typeof p.catch === 'function') p.catch(() => {})
+  if (ctx.toast) ctx.toast(`Sent “${ev.name}” to Claude`)
 }

@@ -6,7 +6,8 @@ export const demos = [
     "fallback": "### Deploy request\n\nReview the release below and confirm the deployment.\n\nService: checkout-api · Version: 2.4.1\n\n---\n\n- Branch: main\n\n- Environment: Staging\n\n- ☑ Notify #deploys channel\n\n*Reply with: “Cancel”, “Deploy”*",
     "heading": "Deploy request",
     "primary": "deploy_btn",
-    "surfaceId": "deploy"
+    "surfaceId": "deploy",
+    "placed": null
   },
   {
     "name": "demo-themes",
@@ -14,7 +15,8 @@ export const demos = [
     "fallback": "**Clean theme** · **[clean]**\n\n- Attendee: —\n\n- Duration: 30 minutes\n\n- ☑ Send a calendar invite\n\n> **info** Times are shown in your time zone.\n\n*Reply with: “Cancel”, “Book meeting”*\n\n---\n\n**Soft theme** · **[soft]**\n\n- Attendee: —\n\n- Duration: 30 minutes\n\n- ☑ Send a calendar invite\n\n> **info** Times are shown in your time zone.\n\n*Reply with: “Cancel”, “Book meeting”*\n\n---\n\n**Accent theme** · **[accent]**\n\n- Attendee: —\n\n- Duration: 30 minutes\n\n- ☑ Send a calendar invite\n\n> **info** Times are shown in your time zone.\n\n*Reply with: “Cancel”, “Book meeting”*",
     "heading": "Clean theme",
     "primary": "book",
-    "surfaceId": "meeting-clean"
+    "surfaceId": "meeting-clean",
+    "placed": null
   },
   {
     "name": "demo-signup",
@@ -22,7 +24,8 @@ export const demos = [
     "fallback": "## Create your workspace\n\n*It takes less than a minute. You can change everything later.*\n\n- Full name: —\n\n- Work email: —\n\n- Your role: Engineering\n\n- Team size: 5\n\n- ☐ Send me product updates (about once a month)\n\n> **Invite your team later** After setup you get a link to share with teammates.\n\n*Reply with: “Cancel”, “Create workspace”*",
     "heading": "Create your workspace",
     "primary": "create",
-    "surfaceId": "signup"
+    "surfaceId": "signup",
+    "placed": null
   },
   {
     "name": "demo-pricing",
@@ -30,7 +33,8 @@ export const demos = [
     "fallback": "## Choose a plan\n\n*Switch or cancel any time. Prices per user, billed monthly.*\n\n**Free**\n\n### $0\n\n*For trying things out*\n\n---\n\n✓  1 project\n\n✓  Community support\n\n✓  7-day history\n\n**Pro** · **[Most popular]**\n\n### $12 / mo\n\n*For individuals who ship*\n\n---\n\n✓  Unlimited projects\n\n✓  Priority support\n\n✓  90-day history\n\n**Team**\n\n### $29 / mo\n\n*For teams that collaborate*\n\n---\n\n✓  Everything in Pro\n\n✓  SSO and audit log\n\n✓  Unlimited history\n\n*Reply with: “Start free”, “Choose Pro”, “Contact sales”*",
     "heading": "Choose a plan",
     "primary": "pro_btn",
-    "surfaceId": "pricing"
+    "surfaceId": "pricing",
+    "placed": null
   },
   {
     "name": "demo-dashboard",
@@ -38,7 +42,8 @@ export const demos = [
     "fallback": "**Release health** · **[Week 48]**\n\n- Deploys: **42** (+12%)\n\n- Failed deploys: **3** (-40%)\n\n- Lead time: **1.8 h** (+0.3 h)\n\n- Sprint 48: 17 / 25 points\n\n- Test coverage: 82%\n\n**Pull requests merged**\n\n- web: 31\n\n- api: 24\n\n- mobile: 12\n\n- infra: 7\n\n> **2 services are on an old runtime** billing and search still run Node 18, which reaches end of life next month.\n\nOn call:\n\n*Reply with: “Remind me tomorrow”, “Open full report”*",
     "heading": "Release health",
     "primary": "report",
-    "surfaceId": "health"
+    "surfaceId": "health",
+    "placed": null
   },
   {
     "name": "demo-tasks",
@@ -46,7 +51,8 @@ export const demos = [
     "fallback": "**Launch checklist** · **[Due Friday]**\n\n- Done: 2 of 5\n\n**[high]** · Ada\n\n**[high]** · Grace\n\n**[medium]** · Linus\n\n**[medium]** · Margaret\n\n**[low]** · Ada\n\n---\n\n- New task: —\n\n*Reply with: “Add task”, “Save checklist”*",
     "heading": "Launch checklist",
     "primary": "save",
-    "surfaceId": "checklist"
+    "surfaceId": "checklist",
+    "placed": null
   },
   {
     "name": "demo-settings",
@@ -54,7 +60,8 @@ export const demos = [
     "fallback": "### Project settings\n\n**General**\n\n- Project name: checkout-api\n\n- Default branch: main\n\n- ☑ Format code on save\n\n**Notifications**\n\n- ☑ Email me when a build fails\n\n- ☐ Post deploys to Slack\n\n- Summary email: Weekly\n\n**Advanced**\n\n- Parallel jobs: 4\n\n- Webhook URL: —\n\n> **warning** More parallel jobs finish faster but use more build minutes.\n\n*Reply with: “Reset”, “Save settings”*",
     "heading": "Project settings",
     "primary": "save",
-    "surfaceId": "settings"
+    "surfaceId": "settings",
+    "placed": null
   },
   {
     "name": "demo-confirm",
@@ -62,7 +69,8 @@ export const demos = [
     "fallback": "### Delete 3 preview environments?\n\n> **This can't be undone** The environments, their databases and their logs will be removed.\n\n- Project: **checkout-api**\n\n- Environments: **pr-812, pr-815, pr-820**\n\n- Created by: **Ada Lovelace**\n\n- Storage freed: **14.2 GB**\n\n- ☐ I understand that this deletes data permanently\n\n- Type the project name: —\n\n*Reply with: “Keep them”, “Delete environments”*",
     "heading": "Delete 3 preview environments?",
     "primary": "delete",
-    "surfaceId": "confirm-delete"
+    "surfaceId": "confirm-delete",
+    "placed": null
   },
   {
     "name": "demo-swipe",
@@ -70,6 +78,25 @@ export const demos = [
     "fallback": "### Triage new issues\n\n*Go through the cards with Back and Next. Pick an action for each; you can go back and change it.*\n\n**1.**\n\n**[bug]** · #812\n\n#### Checkout button does nothing on Safari\n\nClicking “Pay now” on Safari 18 shows no error and never submits. Chrome and Firefox work.\n\n- Opened by: **mkowalski**\n\n- Comments: **7**\n\n- Area: **web**\n\n**2.**\n\n**[bug]** · #815\n\n#### Search returns duplicates after reindex\n\nSince Tuesday’s reindex, each product appears twice in search results.\n\n- Opened by: **jnovak**\n\n- Comments: **3**\n\n- Area: **search**\n\n**3.**\n\n**[feature]** · #817\n\n#### Export orders as CSV\n\nFinance asks for a monthly CSV export of orders with tax breakdown.\n\n- Opened by: **finance-bot**\n\n- Comments: **1**\n\n- Area: **api**\n\n**4.**\n\n**[bug]** · #820\n\n#### Dark mode: unreadable error toasts\n\nRed text on dark red background in error toasts; contrast ratio is about 2:1.\n\n- Opened by: **adesign**\n\n- Comments: **4**\n\n- Area: **web**\n\n**5.**\n\n**[chore]** · #821\n\n#### Upgrade billing service to Node 22\n\nNode 18 reaches end of life next month. billing still pins 18.\n\n- Opened by: **platform**\n\n- Comments: **0**\n\n- Area: **infra**\n\n**6.**\n\n**[feature]** · #824\n\n#### Remember last used payment method\n\nReturning customers want their last card preselected at checkout.\n\n- Opened by: **pm-lena**\n\n- Comments: **12**\n\n- Area: **web**\n\n**7.**\n\n**[bug]** · #826\n\n#### Flaky test: OrdersApi.refunds\n\nFails about 1 in 20 runs on CI with a timeout talking to the payment mock.\n\n- Opened by: **ci**\n\n- Comments: **2**\n\n- Area: **api**\n\n**8.**\n\n**[question]** · #829\n\n#### Is the v1 webhook format still supported?\n\nA partner still sends v1 payloads. Do we accept them until the end of the year?\n\n- Opened by: **partner-success**\n\n- Comments: **5**\n\n- Area: **api**\n\n*Reply with: “Skip <card number>”, “Later <card number>”, “Fix now <card number>”, “Send triage”*\n\n---\n\n#### Name ideas for the new CLI\n\n**1.**\n\n## shipit\n\nShort, verb-first, says what it does.\n\n**2.**\n\n## relay\n\nHands work from one stage to the next.\n\n**3.**\n\n## tern\n\nA small, fast seabird. Easy to type.\n\n**4.**\n\n## forge\n\nBuilds things; feels solid.\n\n*Reply with: “Use this name”, “Use this name”, “Use this name”, “Use this name”*",
     "heading": "Triage new issues",
     "primary": "stack:submit",
-    "surfaceId": "triage"
+    "surfaceId": "triage",
+    "placed": null
+  },
+  {
+    "name": "demo-pane",
+    "body": "{\"version\":\"1.0\",\"createSurface\":{\"surfaceId\":\"live-dash\",\"catalogId\":\"https://github.com/stan-dani/a2ui-render/catalog/v1\",\"theme\":\"soft\",\"placement\":\"pane\",\"title\":\"Build dashboard\",\"refresh\":{\"file\":\".a2ui/dashboard.jsonl\",\"every\":5}}}\n{\"version\":\"1.0\",\"updateComponents\":{\"surfaceId\":\"live-dash\",\"components\":[{\"id\":\"root\",\"component\":\"Column\",\"children\":[\"head\",\"stats\",\"cov\",\"last\",\"tip\",\"actions\"]},{\"id\":\"head\",\"component\":\"Row\",\"children\":[\"title\",\"state\"],\"distribution\":\"spaceBetween\"},{\"id\":\"title\",\"component\":\"Text\",\"text\":\"Build dashboard\",\"variant\":\"h2\"},{\"id\":\"state\",\"component\":\"Badge\",\"text\":{\"path\":\"/status\"},\"tone\":\"success\"},{\"id\":\"stats\",\"component\":\"Row\",\"children\":[\"s1\",\"s2\",\"s3\"]},{\"id\":\"s1\",\"component\":\"Stat\",\"label\":\"Tests passed\",\"value\":{\"path\":\"/tests\"},\"delta\":{\"path\":\"/testsDelta\"}},{\"id\":\"s2\",\"component\":\"Stat\",\"label\":\"Build time\",\"value\":{\"path\":\"/buildTime\"},\"delta\":{\"path\":\"/buildDelta\"},\"goodWhen\":\"down\"},{\"id\":\"s3\",\"component\":\"Stat\",\"label\":\"Open PRs\",\"value\":{\"path\":\"/prs\"}},{\"id\":\"cov\",\"component\":\"Progress\",\"label\":\"Coverage\",\"value\":{\"path\":\"/coverage\"},\"max\":100,\"tone\":\"success\"},{\"id\":\"last\",\"component\":\"KeyValue\",\"items\":[{\"label\":\"Last deploy\",\"value\":{\"path\":\"/lastDeploy\"}},{\"label\":\"Branch\",\"value\":{\"path\":\"/branch\"}}]},{\"id\":\"tip\",\"component\":\"Callout\",\"tone\":\"info\",\"text\":\"This pane rereads .a2ui/dashboard.jsonl every 5 seconds. Write updateDataModel messages there to change the numbers.\"},{\"id\":\"actions\",\"component\":\"Row\",\"children\":[\"logs\",\"redeploy\"]},{\"id\":\"logs\",\"component\":\"Button\",\"child\":\"logs_t\",\"action\":{\"event\":{\"name\":\"open_logs\"}}},{\"id\":\"logs_t\",\"component\":\"Text\",\"text\":\"Open logs\"},{\"id\":\"redeploy\",\"component\":\"Button\",\"child\":\"redeploy_t\",\"action\":{\"event\":{\"name\":\"redeploy\",\"context\":{\"branch\":{\"path\":\"/branch\"}}}},\"variant\":\"primary\"},{\"id\":\"redeploy_t\",\"component\":\"Text\",\"text\":\"Redeploy\"}]}}\n{\"version\":\"1.0\",\"updateDataModel\":{\"surfaceId\":\"live-dash\",\"path\":\"/\",\"value\":{\"status\":\"passing\",\"tests\":\"1,284\",\"testsDelta\":\"+12\",\"buildTime\":\"4m 12s\",\"buildDelta\":\"-18s\",\"prs\":\"7\",\"coverage\":82,\"lastDeploy\":\"today 10:41\",\"branch\":\"main\"}}}\n{\"version\":\"1.0\",\"toast\":{\"text\":\"Build dashboard opened in the side pane\",\"tone\":\"info\"}}",
+    "fallback": "**Build dashboard** · **[passing]**\n\n- Tests passed: **1,284** (+12)\n\n- Build time: **4m 12s** (-18s)\n\n- Open PRs: **7**\n\n- Coverage: 82%\n\n- Last deploy: **today 10:41**\n\n- Branch: **main**\n\n> **info** This pane rereads .a2ui/dashboard.jsonl every 5 seconds. Write updateDataModel messages there to change the numbers.\n\n*Reply with: “Open logs”, “Redeploy”*",
+    "heading": "Build dashboard",
+    "primary": "redeploy",
+    "surfaceId": "live-dash",
+    "placed": "pane"
+  },
+  {
+    "name": "demo-band",
+    "body": "{\"version\":\"1.0\",\"createSurface\":{\"surfaceId\":\"run-tests\",\"catalogId\":\"https://github.com/stan-dani/a2ui-render/catalog/v1\",\"theme\":\"clean\",\"placement\":\"band\",\"title\":\"Quick question\"}}\n{\"version\":\"1.0\",\"updateComponents\":{\"surfaceId\":\"run-tests\",\"components\":[{\"id\":\"root\",\"component\":\"Row\",\"children\":[\"q\",\"yes\",\"no\"]},{\"id\":\"q\",\"component\":\"Text\",\"text\":\"Run the test suite now?\",\"variant\":\"h4\"},{\"id\":\"yes\",\"component\":\"Button\",\"child\":\"yes_t\",\"action\":{\"event\":{\"name\":\"run_tests\"}},\"variant\":\"primary\"},{\"id\":\"yes_t\",\"component\":\"Text\",\"text\":\"Run tests\"},{\"id\":\"no\",\"component\":\"Button\",\"child\":\"no_t\",\"action\":{\"event\":{\"name\":\"skip_tests\"}}},{\"id\":\"no_t\",\"component\":\"Text\",\"text\":\"Not now\"}]}}\n{\"version\":\"1.0\",\"toast\":{\"text\":\"Claude has a quick question for you\",\"tone\":\"info\"}}\n{\"version\":\"1.0\",\"status\":{\"text\":\"a2ui: waiting for your answer above the prompt\"}}",
+    "fallback": "**Run the test suite now?**\n\n*Reply with: “Run tests”, “Not now”*",
+    "heading": "Run the test suite now?",
+    "primary": "yes",
+    "surfaceId": "run-tests",
+    "placed": "band"
   }
 ] as const

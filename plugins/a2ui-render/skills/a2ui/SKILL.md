@@ -84,6 +84,25 @@ Also:
 - `Card` takes `"highlight": true` to draw it in the accent color (for a recommended option).
 - `Row` takes `"distribution": "spaceBetween"`, `"center"` or `"end"`, and `"alignment": "top"`.
 
+## Where a surface shows
+
+By default a surface is drawn inside your message. `createSurface` can place it elsewhere:
+
+- `"placement": "pane"`: in a **side pane** beside the chat, with `"title"` as its tab name. Use it for dashboards, long forms, or anything the user keeps open while you work. Later replies can update it in place: send `updateDataModel` or `updateComponents` with the same `surfaceId` (no new `createSurface` needed). Your message shows only a small pointer to the pane.
+- `"placement": "band"`: in the **band above the prompt box**, for one short question with two or three buttons ("Run the tests now?"). It disappears once the user answers. Keep it to one row.
+
+A pane surface can stay live without new replies: `"refresh": {"file": ".a2ui/<name>.jsonl", "every": 10}` makes the mod reread that file every N seconds (2–3600) and apply the A2UI messages in it for this surface. The file must be inside `.a2ui/` in the project. Write `updateDataModel` lines there (with the Write tool, or a script the user runs) to update numbers.
+
+```json
+{"version":"1.0","createSurface":{"surfaceId":"ci","catalogId":"basic","placement":"pane","title":"CI","refresh":{"file":".a2ui/ci.jsonl","every":10}}}
+```
+
+Two more messages, not tied to a surface:
+- `{"version":"1.0","toast":{"text":"Deploy started"}}`: a short notice in the corner that fades.
+- `{"version":"1.0","status":{"text":"Deploy: 3 of 5 services"}}`: a line under the prompt that stays until replaced; `{"status": null}` clears it.
+
+`{"deleteSurface":{"surfaceId":"ci"}}` closes a pane or band and stops its refresh. These run once your reply is complete.
+
 ## Themes
 
 The user picks a default look in the plugin settings: `clean` (neutral), `soft` (tinted cards, labels above fields) or `accent` (colored borders and headings). Leave the theme alone unless it helps. To set one for a surface, add it to `createSurface`:
