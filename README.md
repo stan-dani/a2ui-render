@@ -40,6 +40,7 @@ Each demo makes Claude reply with a fixed surface. Press a button and Claude get
 | `/a2ui-render:demo-tasks` | A checklist built from a data list, with priority badges |
 | `/a2ui-render:demo-settings` | Settings split into tabs |
 | `/a2ui-render:demo-confirm` | A confirmation for a destructive action, in red |
+| `/a2ui-render:demo-swipe` | Card carousels: triage 8 issues with Back / Next and choices you can revisit, and browse name ideas in a loop |
 
 After that, just ask for things where a form helps, for example "help me set up a new project, ask me the details with a form". The `a2ui` skill tells Claude when and how to answer with a surface.
 
@@ -80,7 +81,7 @@ Messages: `createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface
 | Image, Video, AudioPlayer | Link |
 | Anything else | Its type name, with its children |
 
-Extra components (this plugin's own catalog, beyond A2UI's basic one): **Badge**, **Callout**, **KeyValue**, **Stat**, **Progress**, **BarChart**, **Avatar**, **Spacer**. The `a2ui` skill documents their props for Claude.
+Extra components (this plugin's own catalog, beyond A2UI's basic one): **Badge**, **Callout**, **KeyValue**, **Stat**, **Progress**, **BarChart**, **Avatar**, **Spacer**, **Carousel** (cards one at a time with Back / Next, dots, optional per-card choices and a Done action). The `a2ui` skill documents their props for Claude.
 
 Data bindings use `{"path": "/field"}` (JSON Pointer); paths inside a list template are relative to the item. Function calls such as `formatString` aren't evaluated. Button `functionCall` actions are ignored.
 
@@ -112,6 +113,7 @@ To load your local copy in the Desktop app, set `CLAUDE_CODE_PLUGIN_DIRS` to the
 
 - Terminal polish: wider layouts, a pane mode for long surfaces
 - More chart types (line, donut) and a Table component
+- Real drag-to-swipe for Carousel, using Claude Code's `Client` element (experimental)
 - Bundle `@a2ui/web_core` for full spec coverage (functions, validation)
 - Update an existing surface in place when Claude sends `updateComponents` for the same `surfaceId`
 

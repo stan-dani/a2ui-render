@@ -61,3 +61,52 @@ test('settings demo: tabs switch content', async ($, on) => {
   expect(await ui.find({ key: 's:settings:g_name' })).toBeUndefined()
   expect(await ui.find({ key: 's:settings:a_jobs' })).toBeDefined()
 })
+
+test('carousel: back and forward, dots, choices remembered, Done sends decisions', async ($, on) => {
+  const sent: string[] = []
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  on('prompt.submit', ($, e) => { sent.push(e.text); return { text: e.text } })
+  const d = demos.find((x) => x.name === 'demo-swipe')!
+  for (const surface of ['desktop', 'terminal'] as const) {
+    const id = 'w-' + surface
+    const ui = await $.ui.mount(site(d.body, surface, id))
+    const k = (s: string) => `${id}:triage:stack${s}`
+    expect(await ui.find({ type: 'Text', text: 'Checkout button does nothing on Safari' })).toBeDefined()
+    expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
+    // Next, then Back
+    await ui.press({ key: k(':next') })
+    expect(await ui.find({ type: 'Text', text: 'Search returns duplicates after reindex' })).toBeDefined()
+    await ui.press({ key: k(':prev') })
+    expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
+    // Choose "Fix now" on card 1: moves to card 2
+    await ui.press({ key: k(':choice2') })
+    expect(await ui.find({ type: 'Text', text: '2 / 8' })).toBeDefined()
+    // Go back: the choice is still marked
+    await ui.press({ key: k(':prev') })
+    const picked = await ui.find({ key: k(':choice2') })
+    expect(String(picked?.props?.label)).toContain('✓')
+    // Change it to "Later", jump with a dot to card 5, choose "Skip"
+    await ui.press({ key: k(':choice1') })
+    await ui.press({ key: k(':dot4') })
+    expect(await ui.find({ type: 'Text', text: '5 / 8' })).toBeDefined()
+    await ui.press({ key: k(':choice0') })
+    await ui.press({ key: k(':submit') })
+    const json = JSON.parse(sent[sent.length - 1].split('```json\n')[1].split('\n```')[0])
+    expect(json.name).toBe('triage')
+    expect(json.context.decisions).toEqual({ '#812': 'later', '#821': 'skip' })
+    await ui.unmount()
+  }
+})
+
+test('carousel: loop wraps around and a button inside a card sends that card\'s values', async ($, on) => {
+  const sent: string[] = []
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  on('prompt.submit', ($, e) => { sent.push(e.text); return { text: e.text } })
+  const d = demos.find((x) => x.name === 'demo-swipe')!
+  const ui = await $.ui.mount(site(d.body, 'desktop', 'n'))
+  await ui.press({ key: 'n:names:deck:prev' })
+  expect(await ui.find({ type: 'Text', text: 'forge' })).toBeDefined()
+  await ui.press({ key: 'n:names:n_use#c3' })
+  const json = JSON.parse(sent[0].split('```json\n')[1].split('\n```')[0])
+  expect(json.context).toEqual({ name: 'forge' })
+})

@@ -81,7 +81,7 @@ function renderMessage(e, els, io, settings) {
     }
     for (const s of surfaces) {
       const id = `${msgId}:${s.id}`
-      if (!live.has(id)) live.set(id, { data: structuredClone(s.data), sent: null, tab: {} })
+      if (!live.has(id)) live.set(id, { data: structuredClone(s.data), sent: null, tab: {}, carousel: {} })
       const state = live.get(id)
       const theme = resolveTheme(s.theme, settings, surfaceKind)
       const ctx = { els, surface: s, state, id, columns, theme, redraw: io.redraw, submit: io.submit }
@@ -368,12 +368,159 @@ function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '', inRow =
     case 'Spacer':
       return Box({ key: key(), flexGrow: 1, minHeight: 1 })
 
+    case 'Carousel':
+    case 'CardStack':
+      return renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare)
+
     default:
       return Box({
         key: key(), flexDirection: 'column', ...rowShare,
         children: [Text({ key: key(':type'), dimColor: true, children: [`‹${c.type}›`] }), ...kids(width)],
       })
   }
+}
+
+// A carousel: one card at a time, Back / Next and position dots, optional choices per
+// card that are remembered when you go back, and an optional Done action.
+function renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare) {
+  const { els, state, theme: T } = ctx
+  const { Box, Text, Button } = els
+
+  // Entries: explicit child ids, or a template repeated over a data array.
+  const entries = []
+  for (const ch of childIds(c)) {
+    if (typeof ch === 'string') { entries.push({ id: ch, scope, itemKey: String(entries.length), item: null }); continue }
+    const base = joinPath(scope, ch.path)
+    const items = pointerGet(state.data, base)
+    if (!Array.isArray(items)) continue
+    items.forEach((item, j) => entries.push({
+      id: ch.componentId, scope: base + '/' + j, tpl: j,
+      itemKey: String((c.itemKey && item && typeof item === 'object' ? item[c.itemKey] : undefined) ?? j),
+      item,
+    }))
+  }
+  const n = entries.length
+  if (!n) return Text({ key: key(), dimColor: true, children: ['(no cards)'] })
+
+  const idxPath = c.index && typeof c.index === 'object' ? bindOf(c.index, scope) : null
+  const getIdx = () => {
+    const raw = idxPath ? pointerGet(state.data, idxPath) : state.carousel[cid]
+    const i = Number.isInteger(raw) ? raw : 0
+    return Math.max(0, Math.min(n - 1, i))
+  }
+  const setIdx = (i) => {
+    const loop = c.loop === true
+    const next = loop ? ((i % n) + n) % n : Math.max(0, Math.min(n - 1, i))
+    if (idxPath) state.data = pointerSet(state.data, idxPath, next)
+    else state.carousel[cid] = next
+    ctx.redraw()
+  }
+  const idx = getIdx()
+  const cur = entries[idx]
+
+  // Decisions live in the data model so Done (and Claude) can read them.
+  const decPath = c.decisions && typeof c.decisions === 'object' ? bindOf(c.decisions, scope) : joinPath(scope, `/_decisions/${cid}`)
+  const decisions = () => { const d = pointerGet(state.data, decPath); return d && typeof d === 'object' ? d : {} }
+  const choose = (value) => {
+    const d = { ...decisions(), [cur.itemKey]: value }
+    state.data = pointerSet(state.data, decPath, d)
+    if (idx < n - 1) setIdx(idx + 1); else ctx.redraw()
+  }
+  const decided = decisions()
+  const doneCount = entries.filter((e2) => decided[e2.itemKey] !== undefined).length
+
+  const choices = (Array.isArray(c.choices) ? c.choices : []).map((ch) => ({
+    value: String(resolveValue(ch.value, state.data, scope) ?? ''),
+    label: String(resolveValue(ch.label, state.data, scope) ?? ch.value ?? ''),
+    primary: ch.primary === true || ch.variant === 'primary',
+  })).filter((ch) => ch.value !== '')
+
+  const suffixFor = (e2) => `${suffix}#c${e2.tpl ?? e2.id}`
+  const cardBody = renderComponent(ctx, cur.id, cur.scope, width - 4, depth + 1, suffixFor(cur))
+
+  // Header: position and progress.
+  const title = String(resolveValue(c.title, state.data, scope) ?? '')
+  const header = Box({
+    key: key(':head'), flexDirection: 'row', columnGap: 'md', alignItems: 'center',
+    children: [
+      ...(title ? [Text({ key: key(':title'), weight: 'semibold', bold: true, children: [title] })] : []),
+      Text({ key: key(':count'), dimColor: true, size: 'footnote', children: [`${idx + 1} / ${n}`] }),
+      ...(choices.length ? [Text({ key: key(':done'), dimColor: true, size: 'footnote', children: [`· ${doneCount} decided`] })] : []),
+    ],
+  })
+
+  // The card, with a hint of the next one underneath.
+  const nextEntry = idx < n - 1 ? entries[idx + 1] : (c.loop === true && n > 1 ? entries[0] : null)
+  const nextTitle = nextEntry?.item && typeof nextEntry.item === 'object' ? (nextEntry.item.title ?? nextEntry.item.name) : null
+  const curChoice = decided[cur.itemKey]
+  const card = Box({
+    key: key(':card'), flexDirection: 'column', rowGap: T.rowGap, ...T.card(),
+    ...(curChoice !== undefined ? { borderStyle: 'round', borderColor: T.accent.key } : {}),
+    children: [cardBody],
+  })
+  const peek = nextTitle
+    ? [Text({ key: key(':next'), size: 'footnote', dimColor: true, children: [`Up next: ${nextTitle}`] })]
+    : []
+
+  // Choices for this card; the one already picked is marked and primary.
+  const choiceRow = choices.length
+    ? [Box({
+        key: key(':choices'), flexDirection: 'row', columnGap: 'sm', flexWrap: 'wrap',
+        children: choices.map((ch, i) => Button({
+          key: key(':choice' + i),
+          label: curChoice === ch.value ? `✓ ${ch.label}` : ch.label,
+          ...((curChoice === ch.value || (curChoice === undefined && ch.primary)) ? { variant: 'primary' } : {}),
+          onPress: () => choose(ch.value),
+        })),
+      })]
+    : []
+
+  // Navigation: Back, dots (up to 12), Next.
+  const dots = n <= 12
+    ? entries.map((e2, i) => Button({
+        key: key(':dot' + i), plain: true, dimColor: i !== idx,
+        label: i === idx ? '●' : decided[e2.itemKey] !== undefined ? '◉' : '○',
+        onPress: () => setIdx(i),
+      }))
+    : []
+  const canBack = c.loop === true || idx > 0
+  const canNext = c.loop === true || idx < n - 1
+  const nav = Box({
+    key: key(':nav'), flexDirection: 'row', columnGap: 'sm', alignItems: 'center',
+    children: [
+      Button({ key: key(':prev'), label: '‹ Back', ...(canBack ? {} : { dimColor: true }), onPress: () => { if (canBack) setIdx(idx - 1) } }),
+      ...dots,
+      Button({ key: key(':next'), label: 'Next ›', ...(canNext ? {} : { dimColor: true }), onPress: () => { if (canNext) setIdx(idx + 1) } }),
+    ],
+  })
+
+  // Done: sends the carousel's action with its decisions.
+  const doneBtn = c.action
+    ? [Button({
+        key: key(':submit'),
+        label: String(resolveValue(c.actionLabel, state.data, scope) ?? 'Done'),
+        ...(!choices.length || doneCount === n ? { variant: 'primary' } : {}),
+        onPress: () => pressButton(ctx, { ...c, id: cid, action: withDecisions(c.action, decPath) }, scope),
+      })]
+    : []
+
+  return Box({
+    key: key(), flexDirection: 'column', rowGap: 'sm', ...rowShare,
+    children: [header, card, ...peek, ...choiceRow, Box({ key: key(':foot'), flexDirection: 'row', columnGap: 'md', alignItems: 'center', flexWrap: 'wrap', children: [nav, ...doneBtn] })],
+  })
+}
+
+// Add {"decisions": {"path": ...}} to an event action's context unless it names its own.
+function withDecisions(action, decPath) {
+  const ev = action?.event ?? action
+  if (!ev || !ev.name) return action
+  const context = { decisions: { path: decPath }, ...(ev.context && !Array.isArray(ev.context) ? ev.context : {}) }
+  return { event: { ...ev, context } }
+}
+
+function bindOf(v, scope) {
+  const p = v.path ?? v['@path']
+  return typeof p === 'string' ? joinPath(scope, p) : null
 }
 
 function childIds(c) {

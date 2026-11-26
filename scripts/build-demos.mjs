@@ -246,6 +246,57 @@ demos.push({
   ], { ack: false, typed: '' }, { name: 'accent', primaryColor: '#c83246' }),
 })
 
+// 9. carousel: triage issues (choices, back/forward, Done) + browse names (loop, per-card button)
+demos.push({
+  skill: 'demo-swipe', fixture: 'swipe', title: 'swipeable card carousels: issue triage and name ideas',
+  heading: 'Triage new issues', primary: 'stack:submit', surfaceId: 'triage',
+  messages: [
+    ...surface('triage', [
+      col('root', ['title', 'sub', 'stack']),
+      text('title', 'Triage new issues', 'h2'),
+      text('sub', 'Go through the cards with Back and Next. Pick an action for each; you can go back and change it.', 'caption'),
+      { id: 'stack', component: 'Carousel', title: 'Inbox', children: { componentId: 'issue', path: '/issues' }, itemKey: 'ref',
+        choices: [{ label: 'Skip', value: 'skip' }, { label: 'Later', value: 'later' }, { label: 'Fix now', value: 'fix', primary: true }],
+        decisions: P('/triage'), action: { event: { name: 'triage' } }, actionLabel: 'Send triage' },
+      col('issue', ['i_head', 'i_title', 'i_body', 'i_meta']),
+      row('i_head', ['i_type', 'i_ref']),
+      { id: 'i_type', component: 'Badge', text: P('type'), tone: 'info' },
+      { id: 'i_ref', component: 'Text', text: P('ref'), variant: 'caption' },
+      { id: 'i_title', component: 'Text', text: P('title'), variant: 'h3' },
+      { id: 'i_body', component: 'Text', text: P('body') },
+      { id: 'i_meta', component: 'KeyValue', items: [{ label: 'Opened by', value: P('author') }, { label: 'Comments', value: P('comments') }, { label: 'Area', value: P('area') }] },
+    ], {
+      triage: {},
+      issues: [
+        { ref: '#812', type: 'bug', title: 'Checkout button does nothing on Safari', body: 'Clicking “Pay now” on Safari 18 shows no error and never submits. Chrome and Firefox work.', author: 'mkowalski', comments: 7, area: 'web' },
+        { ref: '#815', type: 'bug', title: 'Search returns duplicates after reindex', body: 'Since Tuesday’s reindex, each product appears twice in search results.', author: 'jnovak', comments: 3, area: 'search' },
+        { ref: '#817', type: 'feature', title: 'Export orders as CSV', body: 'Finance asks for a monthly CSV export of orders with tax breakdown.', author: 'finance-bot', comments: 1, area: 'api' },
+        { ref: '#820', type: 'bug', title: 'Dark mode: unreadable error toasts', body: 'Red text on dark red background in error toasts; contrast ratio is about 2:1.', author: 'adesign', comments: 4, area: 'web' },
+        { ref: '#821', type: 'chore', title: 'Upgrade billing service to Node 22', body: 'Node 18 reaches end of life next month. billing still pins 18.', author: 'platform', comments: 0, area: 'infra' },
+        { ref: '#824', type: 'feature', title: 'Remember last used payment method', body: 'Returning customers want their last card preselected at checkout.', author: 'pm-lena', comments: 12, area: 'web' },
+        { ref: '#826', type: 'bug', title: 'Flaky test: OrdersApi.refunds', body: 'Fails about 1 in 20 runs on CI with a timeout talking to the payment mock.', author: 'ci', comments: 2, area: 'api' },
+        { ref: '#829', type: 'question', title: 'Is the v1 webhook format still supported?', body: 'A partner still sends v1 payloads. Do we accept them until the end of the year?', author: 'partner-success', comments: 5, area: 'api' },
+      ],
+    }, 'soft'),
+    ...surface('names', [
+      col('root', ['title', 'deck']),
+      text('title', 'Name ideas for the new CLI', 'h3'),
+      { id: 'deck', component: 'Carousel', loop: true, children: { componentId: 'idea', path: '/ideas' } },
+      col('idea', ['n_name', 'n_why', 'n_use']),
+      { id: 'n_name', component: 'Text', text: P('name'), variant: 'h1' },
+      { id: 'n_why', component: 'Text', text: P('why') },
+      ...btn('n_use', 'Use this name', 'pick_name', { name: P('name') }, true),
+    ], {
+      ideas: [
+        { name: 'shipit', why: 'Short, verb-first, says what it does.' },
+        { name: 'relay', why: 'Hands work from one stage to the next.' },
+        { name: 'tern', why: 'A small, fast seabird. Easy to type.' },
+        { name: 'forge', why: 'Builds things; feels solid.' },
+      ],
+    }, { name: 'accent', accent: 'purple' }),
+  ],
+})
+
 // ---- write files ----
 const jsonl = (msgs) => msgs.map((m) => JSON.stringify(m)).join('\n')
 const tests = []

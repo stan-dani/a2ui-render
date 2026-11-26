@@ -60,6 +60,9 @@ These go beyond the A2UI basic catalog. Use them freely; other A2UI renderers ma
 | `BarChart` | optional `title`, `items`: `[{"label": "web", "value": 31}, ...]` |
 | `Avatar` | `name`, optional `subtitle` |
 | `Spacer` | — (pushes the next items in a Row to the end) |
+| `Carousel` | Cards shown one at a time with **‹ Back / Next ›** and position dots. `children`: ids or a template `{"componentId": "card", "path": "/items"}`. Optional: `title`, `loop: true`, `itemKey` (field that identifies an item, e.g. `"id"`), `choices: [{"label": "Skip", "value": "skip"}, {"label": "Keep", "value": "keep", "primary": true}]` (choosing records the decision and moves on; going back shows it and lets the user change it), `decisions` (bound path where decisions are stored, as `{itemKey: value}`), `action` + `actionLabel` (a Done button; its event context gets `decisions` automatically) |
+
+Use a `Carousel` when the user should look at several similar items one by one: triaging issues or pull requests, reviewing suggestions, comparing options, browsing ideas. A Button inside a card template can read that card's fields with relative paths, e.g. `"context": {"name": {"path": "name"}}`.
 
 Also:
 - `Text` takes an optional `tone` for colored text.
