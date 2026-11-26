@@ -117,7 +117,7 @@ function renderSurface(ctx) {
 // (used inside list templates). `width` is a soft hint in columns.
 function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '') {
   const { els, surface, state } = ctx
-  const { Box, Text, Button, Input, Select, Link } = els
+  const { Box, Text, Button, Input, Select, Link, Markdown } = els
   const c = surface.components.get(cid)
   const key = (k = '') => `${ctx.id}:${cid}${suffix}${k}`
   if (!c) return Text({ key: key(':missing'), dimColor: true, children: [`‹missing ${cid}›`] })
@@ -141,27 +141,31 @@ function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '') {
     case 'Text': {
       const v = c.variant ?? c.usageHint
       const t = str(c.text)
-      if (v === 'h1' || v === 'h2') return Text({ key: key(), bold: true, children: [t] })
-      if (v === 'h3' || v === 'h4' || v === 'h5') return Text({ key: key(), bold: true, children: [t] })
-      if (v === 'caption') return Text({ key: key(), dimColor: true, children: [t] })
+      // Text sizes the app understands: caption, footnote, body, heading, title.
+      if (v === 'h1') return Text({ key: key(), size: 'title', weight: 'semibold', bold: true, children: [t] })
+      if (v === 'h2' || v === 'h3') return Text({ key: key(), size: 'heading', weight: 'semibold', bold: true, children: [t] })
+      if (v === 'h4' || v === 'h5') return Text({ key: key(), weight: 'semibold', bold: true, children: [t] })
+      if (v === 'caption') return Text({ key: key(), size: 'caption', dimColor: true, children: [t] })
       return Text({ key: key(), children: [t] })
     }
     case 'Column':
     case 'List':
-      return Box({ key: key(), flexDirection: 'column', children: kids(width) })
+      return Box({ key: key(), flexDirection: 'column', rowGap: 'sm', children: kids(width) })
     case 'Row': {
       const n = Math.max(1, childIds(c).length)
-      return Box({ key: key(), flexDirection: 'row', columnGap: 2, children: kids(Math.floor(width / n)) })
+      return Box({ key: key(), flexDirection: 'row', columnGap: 'md', alignItems: 'center', flexWrap: 'wrap', children: kids(Math.floor(width / n)) })
     }
     case 'Card':
-      return Box({ key: key(), flexDirection: 'column', borderStyle: 'round', paddingLeft: 1, paddingRight: 1, children: kids(width - 4) })
+      return Box({ key: key(), flexDirection: 'column', borderStyle: 'round', paddingX: 'md', paddingY: 'sm', children: kids(width - 4) })
     case 'Divider':
-      return Text({ key: key(), dimColor: true, children: ['─'.repeat(Math.max(10, Math.min(width, 60)))] })
+      // A Markdown rule: full width in the app and in the terminal.
+      return Markdown({ key: key(), text: '---' })
     case 'Button': {
       const label = c.child ? plainText(ctx, c.child, scope) : str(c.label) || cid
       return Button({
         key: key(),
         label,
+        ...(c.variant === 'primary' || c.primary === true ? { variant: 'primary' } : {}),
         onPress: () => pressButton(ctx, c, scope),
       })
     }
@@ -175,7 +179,6 @@ function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '') {
         label: label || ' ',
         placeholder: str(c.placeholder) || (c.type === 'DateTimeInput' ? 'YYYY-MM-DD' : ''),
         value: current == null ? '' : String(current),
-        submitLabel: 'set',
         onInput: (v) => { if (p) pointerSet(state.data, p, v) },
         onSubmit: (v) => { if (p) pointerSet(state.data, p, v); ctx.redraw() },
       })
