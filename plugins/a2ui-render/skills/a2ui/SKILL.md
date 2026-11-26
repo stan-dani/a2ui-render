@@ -13,6 +13,20 @@ Use a surface when it saves the user typing: picking one of several options, fil
 
 Write normal Markdown around the block if it helps (one short sentence is usually enough). Put the UI in **one fenced block tagged `a2ui`**, with **one JSON message per line** (JSONL). No comments, no trailing commas.
 
+**Always put a short fallback before the block**, between `<!-- a2ui:fallback -->` and `<!-- /a2ui:fallback -->`. The mod hides it where it draws the form; apps that can't draw (the Claude mobile apps, claude.ai) show it instead. Keep it to the essentials: the title, the current values or options as a short list, and what to reply, e.g. `*Reply with: “Deploy” or “Cancel”*`.
+
+````
+<!-- a2ui:fallback -->
+**Deploy checkout-api 2.4.1?** Branch: main · Environment: Staging
+
+*Reply with: “Deploy” or “Cancel”*
+<!-- /a2ui:fallback -->
+
+```a2ui
+...
+```
+````
+
 ````
 ```a2ui
 {"version":"1.0","createSurface":{"surfaceId":"trip","catalogId":"basic"}}
@@ -61,6 +75,8 @@ These go beyond the A2UI basic catalog. Use them freely; other A2UI renderers ma
 | `Avatar` | `name`, optional `subtitle` |
 | `Spacer` | — (pushes the next items in a Row to the end) |
 | `Carousel` | Cards shown one at a time with **‹ Back / Next ›** and position dots. `children`: ids or a template `{"componentId": "card", "path": "/items"}`. Optional: `title`, `loop: true`, `itemKey` (field that identifies an item, e.g. `"id"`), `choices: [{"label": "Skip", "value": "skip"}, {"label": "Keep", "value": "keep", "primary": true}]` (choosing records the decision and moves on; going back shows it and lets the user change it), `decisions` (bound path where decisions are stored, as `{itemKey: value}`), `action` + `actionLabel` (a Done button; its event context gets `decisions` automatically) |
+
+Add `"swipe": true` to a `Carousel` to let the user drag cards with the mouse (left for the next card, right to go back) in the Desktop app; Back / Next buttons keep working. Card content in a swipe carousel should stick to Text, Badge, Row, Column, KeyValue and Divider, which the draggable card can draw.
 
 Use a `Carousel` when the user should look at several similar items one by one: triaging issues or pull requests, reviewing suggestions, comparing options, browsing ideas. A Button inside a card template can read that card's fields with relative paths, e.g. `"context": {"name": {"path": "name"}}`.
 

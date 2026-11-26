@@ -16,16 +16,36 @@
 
 import { parseA2UI, buildSurfaces, splitSegments, resolveValue, pointerGet, pointerSet, joinPath } from './a2ui-core.mjs'
 import { resolveTheme, initialsOf } from './themes.mjs'
+import { surfaceToMarkdown } from './plain.mjs'
 
 const FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*a2ui[ \t\r]*$/im
 const MAX_MARKDOWN = 10000
+// Text Claude writes for apps that can't draw (the mobile apps). Hidden where we draw.
+const FALLBACK = /<!--\s*a2ui:fallback\s*-->[\s\S]*?<!--\s*\/a2ui:fallback\s*-->/g
+// Apps that draw full controls. Anything else gets plain Markdown.
+const RICH = new Set(['terminal', 'desktop', 'vscode'])
 
 // Per-surface live state, keyed by `${messageId}:${surfaceId}`.
 const live = new Map()
+// Swipe decks currently drawn, keyed by their Client key: answer a post from the deck.
+const decks = new Map()
 
 export function register(on, options = {}) {
   const sendMode = String(options.send_as ?? 'mod')
-  const settings = { theme: String(options.theme ?? 'clean'), accent: String(options.accent ?? 'orange') }
+  const settings = { theme: String(options.theme ?? 'clean'), accent: String(options.accent ?? 'orange'), gestures: options.gestures !== false }
+
+  // A swipe deck (hooks/swipe-deck.mjs) posts {type: 'go', delta} when a card is swiped
+  // away. Move the carousel and answer with the deck's new props.
+  on('ui.message', async ($, e, next) => {
+    const deck = decks.get(String(e.element ?? ''))
+    if (!deck) return next(e)
+    try {
+      const props = deck(e.data)
+      return props ? { props } : {}
+    } catch (err) {
+      return {}
+    }
+  })
 
   on('ui.render', { component: 'AssistantMessage', props: { text: FENCE } }, async ($, e, next) => {
     try {
@@ -50,7 +70,7 @@ export function register(on, options = {}) {
 // ---------------------------------------------------------------------------
 
 function renderMessage(e, els, io, settings) {
-  const text = String(e.props?.text ?? '')
+  const text = String(e.props?.text ?? '').replace(FALLBACK, '')
   const segments = splitSegments(text)
   if (!segments.some((s) => s.kind === 'a2ui')) return undefined
 
@@ -81,10 +101,15 @@ function renderMessage(e, els, io, settings) {
     }
     for (const s of surfaces) {
       const id = `${msgId}:${s.id}`
+      if (e.surface && !RICH.has(e.surface)) {
+        // Mobile and other apps: a readable summary instead of controls.
+        children.push(Markdown({ key: `plain-${id}`, text: surfaceToMarkdown(s).slice(0, MAX_MARKDOWN) || '(form)' }))
+        continue
+      }
       if (!live.has(id)) live.set(id, { data: structuredClone(s.data), sent: null, tab: {}, carousel: {} })
       const state = live.get(id)
       const theme = resolveTheme(s.theme, settings, surfaceKind)
-      const ctx = { els, surface: s, state, id, columns, theme, redraw: io.redraw, submit: io.submit }
+      const ctx = { els, surface: s, state, id, columns, theme, gestures: settings.gestures && surfaceKind !== 'vscode', redraw: io.redraw, submit: io.submit }
       children.push(renderSurface(ctx))
     }
   })
@@ -370,6 +395,7 @@ function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '', inRow =
 
     case 'Carousel':
     case 'CardStack':
+    case 'SwipeDeck':
       return renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare)
 
     default:
@@ -384,7 +410,7 @@ function renderComponent(ctx, cid, scope, width, depth = 0, suffix = '', inRow =
 // card that are remembered when you go back, and an optional Done action.
 function renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare) {
   const { els, state, theme: T } = ctx
-  const { Box, Text, Button } = els
+  const { Box, Text, Button, Client } = els
 
   // Entries: explicit child ids, or a template repeated over a data array.
   const entries = []
@@ -453,14 +479,45 @@ function renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare)
   const nextEntry = idx < n - 1 ? entries[idx + 1] : (c.loop === true && n > 1 ? entries[0] : null)
   const nextTitle = nextEntry?.item && typeof nextEntry.item === 'object' ? (nextEntry.item.title ?? nextEntry.item.name) : null
   const curChoice = decided[cur.itemKey]
-  const card = Box({
-    key: key(':card'), flexDirection: 'column', rowGap: T.rowGap, ...T.card(),
-    ...(curChoice !== undefined ? { borderStyle: 'round', borderColor: T.accent.key } : {}),
-    children: [cardBody],
-  })
-  const peek = nextTitle
+  const swipe = ctx.gestures && (c.type === 'SwipeDeck' || c.swipe === true)
+  let card
+  if (swipe) {
+    // The card area is a draggable deck drawn by hooks/swipe-deck.mjs.
+    const deckKey = key(':deck')
+    const W = Math.max(30, Math.min(ctx.columns, 72))
+    const inner = W - 6
+    const liteAt = (i) => (i >= 0 && i < n ? lite(ctx, entries[i].id, entries[i].scope, 0) : null)
+    const wrapAt = (i) => (c.loop === true ? ((i % n) + n) % n : i)
+    const propsFor = (i) => {
+      const back = c.loop === true || i > 0
+      const fwd = c.loop === true || i < n - 1
+      return {
+        index: i, count: n,
+        cur: liteAt(i), next: fwd ? liteAt(wrapAt(i + 1)) : null, prev: back ? liteAt(wrapAt(i - 1)) : null,
+        canBack: back, canNext: fwd,
+        accent: T.accent.key, cardBg: 'userMessageBackground',
+      }
+    }
+    const lines = Math.max(...[idx - 1, idx, idx + 1].map((i) => liteAt(wrapAt(i))).filter(Boolean).map((t) => liteLines(t, inner)))
+    decks.set(deckKey, (data) => {
+      if (!data || data.type !== 'go') return null
+      const target = getIdx() + (data.delta > 0 ? 1 : -1)
+      setIdx(target)
+      return propsFor(getIdx())
+    })
+    card = Client({ module: './swipe-deck.mjs', key: deckKey, props: propsFor(idx), width: W, height: lines + 3 })
+  } else {
+    card = Box({
+      key: key(':card'), flexDirection: 'column', rowGap: T.rowGap, ...T.card(),
+      ...(curChoice !== undefined ? { borderStyle: 'round', borderColor: T.accent.key } : {}),
+      children: [cardBody],
+    })
+  }
+  const peek = nextTitle && !swipe
     ? [Text({ key: key(':next'), size: 'footnote', dimColor: true, children: [`Up next: ${nextTitle}`] })]
-    : []
+    : swipe
+      ? [Text({ key: key(':hint'), size: 'footnote', dimColor: true, children: ['Drag the card left for the next one, right to go back.'] })]
+      : []
 
   // Choices for this card; the one already picked is marked and primary.
   const choiceRow = choices.length
@@ -508,6 +565,46 @@ function renderCarousel(ctx, c, cid, scope, width, depth, suffix, key, rowShare)
     key: key(), flexDirection: 'column', rowGap: 'sm', ...rowShare,
     children: [header, card, ...peek, ...choiceRow, Box({ key: key(':foot'), flexDirection: 'row', columnGap: 'md', alignItems: 'center', flexWrap: 'wrap', children: [nav, ...doneBtn] })],
   })
+}
+
+// A plain-data copy of a component tree for the swipe deck, which can't run this file's
+// renderer: text, badges, rows, columns, key-value lists and rules, resolved to values.
+function lite(ctx, cid, scope, depth) {
+  const c = ctx.surface.components.get(cid)
+  if (!c || depth > 12) return null
+  const T = ctx.theme
+  const v = (x) => { const r = resolveValue(x, ctx.state.data, scope); return r == null ? '' : typeof r === 'object' ? JSON.stringify(r) : String(r) }
+  const kids = () => childIds(c).filter((x) => typeof x === 'string').map((x) => lite(ctx, x, scope, depth + 1)).filter(Boolean)
+  switch (c.type) {
+    case 'Text': {
+      const level = { h1: 1, h2: 2, h3: 3, h4: 4, h5: 5 }[c.variant ?? c.usageHint]
+      const st = level ? T.heading(level) : c.variant === 'caption' ? { size: 'caption', dimColor: true } : c.tone ? { color: T.tone(c.tone).key } : {}
+      return { k: 'text', s: v(c.text), st }
+    }
+    case 'Badge': return { k: 'badge', s: v(c.text ?? c.label), st: T.badge(c.tone ?? 'neutral') }
+    case 'Divider': return { k: 'rule' }
+    case 'KeyValue': {
+      const items = Array.isArray(resolveValue(c.items, ctx.state.data, scope)) ? resolveValue(c.items, ctx.state.data, scope) : []
+      return { k: 'kv', items: items.map((it) => [String(it.label ?? ''), String(it.value ?? '')]) }
+    }
+    case 'Row': return { k: 'row', c: kids() }
+    case 'Avatar': return { k: 'text', s: v(c.name), st: { weight: 'medium' } }
+    case 'Stat': return { k: 'col', c: [{ k: 'text', s: v(c.label), st: { dimColor: true, size: 'footnote' } }, { k: 'text', s: v(c.value), st: { size: 'title', bold: true } }] }
+    case 'Callout': return { k: 'text', s: [v(c.title), v(c.text)].filter(Boolean).join(' — '), st: { color: T.tone(c.tone ?? 'info').key } }
+    default: return { k: 'col', c: kids() }
+  }
+}
+
+// Rough number of lines a lite tree takes at a given width, to size the deck.
+function liteLines(node, width) {
+  if (!node) return 0
+  switch (node.k) {
+    case 'text': return Math.max(1, Math.ceil(String(node.s).length / Math.max(10, width)))
+    case 'kv': return (node.items || []).length
+    case 'row': return Math.max(1, ...(node.c || []).map((x) => liteLines(x, width / Math.max(1, (node.c || []).length))))
+    case 'badge': case 'rule': return 1
+    default: return (node.c || []).reduce((a, x) => a + liteLines(x, width), 0)
+  }
 }
 
 // Add {"decisions": {"path": ...}} to an event action's context unless it names its own.

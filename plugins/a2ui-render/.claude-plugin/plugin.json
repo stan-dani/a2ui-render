@@ -1,7 +1,7 @@
 {
   "name": "a2ui-render",
   "displayName": "A2UI Render (unofficial)",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Render A2UI surfaces from Claude's replies as native, interactive UI in Claude Code (Desktop Code tab and terminal). Button actions go back to Claude.",
   "author": {
     "name": "a2ui-render contributors"
@@ -47,6 +47,12 @@
         "user"
       ],
       "default": "mod"
+    },
+    "gestures": {
+      "type": "boolean",
+      "title": "Swipe gestures",
+      "description": "Let carousels with \"swipe\": true be dragged with the mouse. Turn off if cards don't show or dragging misbehaves; Back / Next buttons always work.",
+      "default": true
     }
   }
 }

@@ -71,11 +71,12 @@ test('carousel: back and forward, dots, choices remembered, Done sends decisions
     const id = 'w-' + surface
     const ui = await $.ui.mount(site(d.body, surface, id))
     const k = (s: string) => `${id}:triage:stack${s}`
-    expect(await ui.find({ type: 'Text', text: 'Checkout button does nothing on Safari' })).toBeDefined()
+    const deckTitle = async () => JSON.stringify((await ui.find({ type: 'Client' }))?.props?.props?.cur ?? {})
+    expect(await deckTitle()).toContain('Checkout button does nothing on Safari')
     expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
     // Next, then Back
     await ui.press({ key: k(':next') })
-    expect(await ui.find({ type: 'Text', text: 'Search returns duplicates after reindex' })).toBeDefined()
+    expect(await deckTitle()).toContain('Search returns duplicates after reindex')
     await ui.press({ key: k(':prev') })
     expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
     // Choose "Fix now" on card 1: moves to card 2
@@ -109,4 +110,18 @@ test('carousel: loop wraps around and a button inside a card sends that card\'s 
   await ui.press({ key: 'n:names:n_use#c3' })
   const json = JSON.parse(sent[0].split('```json\n')[1].split('\n```')[0])
   expect(json.context).toEqual({ name: 'forge' })
+})
+
+test('fallback text is hidden where the form is drawn, and mobile gets plain Markdown', async ($, on) => {
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  const d = demos.find((x) => x.name === 'demo')!
+  const text = '<!-- a2ui:fallback -->\n' + d.fallback + '\n<!-- /a2ui:fallback -->\n\n```a2ui\n' + d.body + '\n```'
+  const desk = await $.ui.mount({ plugin: 'a2ui-render', component: 'AssistantMessage', requestId: 'fb', surface: 'desktop', viewport: { columns: 100, rows: 40 }, props: { text, isSummary: false } } as any)
+  expect(await desk.find({ type: 'Markdown', text: /Reply with/ })).toBeUndefined()
+  expect(await desk.find({ key: 'fb:deploy:deploy_btn' })).toBeDefined()
+  await desk.unmount()
+  const mob = await $.ui.mount({ plugin: 'a2ui-render', component: 'AssistantMessage', requestId: 'mb', surface: 'mobile', viewport: { columns: 40, rows: 40 }, props: { text, isSummary: false } } as any)
+  const md = await mob.find({ type: 'Markdown' })
+  expect(String(md?.props?.text)).toContain('Reply with')
+  expect(await mob.find({ type: 'Button' })).toBeUndefined()
 })
