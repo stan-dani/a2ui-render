@@ -250,14 +250,14 @@ demos.push({
 
 // 9. carousel: triage issues (choices, back/forward, Done) + browse names (loop, per-card button)
 demos.push({
-  skill: 'demo-swipe', fixture: 'swipe', title: 'swipeable card carousels: issue triage and name ideas',
+  skill: 'demo-swipe', fixture: 'swipe', title: 'card carousels: issue triage and name ideas',
   heading: 'Triage new issues', primary: 'stack:submit', surfaceId: 'triage',
   messages: [
     ...surface('triage', [
       col('root', ['title', 'sub', 'stack']),
       text('title', 'Triage new issues', 'h2'),
       text('sub', 'Go through the cards with Back and Next. Pick an action for each; you can go back and change it.', 'caption'),
-      { id: 'stack', component: 'Carousel', swipe: true, title: 'Inbox', children: { componentId: 'issue', path: '/issues' }, itemKey: 'ref',
+      { id: 'stack', component: 'Carousel', title: 'Inbox', children: { componentId: 'issue', path: '/issues' }, itemKey: 'ref',
         choices: [{ label: 'Skip', value: 'skip' }, { label: 'Later', value: 'later' }, { label: 'Fix now', value: 'fix', primary: true }],
         decisions: P('/triage'), action: { event: { name: 'triage' } }, actionLabel: 'Send triage' },
       col('issue', ['i_head', 'i_title', 'i_body', 'i_meta']),

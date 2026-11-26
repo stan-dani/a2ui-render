@@ -40,7 +40,7 @@ Each demo makes Claude reply with a fixed surface. Press a button and Claude get
 | `/a2ui-render:demo-tasks` | A checklist built from a data list, with priority badges |
 | `/a2ui-render:demo-settings` | Settings split into tabs |
 | `/a2ui-render:demo-confirm` | A confirmation for a destructive action, in red |
-| `/a2ui-render:demo-swipe` | Card carousels: triage 8 issues by **dragging cards** left/right (or Back / Next), with choices you can revisit; and browse name ideas in a loop |
+| `/a2ui-render:demo-swipe` | Card carousels: triage 8 issues with Back / Next and choices you can revisit, and browse name ideas in a loop |
 
 After that, just ask for things where a form helps, for example "help me set up a new project, ask me the details with a form". The `a2ui` skill tells Claude when and how to answer with a surface.
 
@@ -54,7 +54,6 @@ plugins/a2ui-render/
 ├── hooks/register.mjs              the mod: redraws messages that contain ```a2ui
 ├── hooks/a2ui-core.mjs             parser, data model, bindings (no Claude Code APIs)
 ├── hooks/themes.mjs                clean / soft / accent themes, colors, SVG bars
-├── hooks/swipe-deck.mjs            draggable card deck (a Claude Code surface module)
 ├── hooks/plain.mjs                 a surface as plain Markdown (mobile, fallback text)
 ├── skills/a2ui/SKILL.md            teaches Claude the A2UI format and action handling
 ├── skills/demo*/SKILL.md           the demo commands (generated)
@@ -67,15 +66,15 @@ The mod hooks the `AssistantMessage` render site, only for messages with an `a2u
 
 ## Troubleshooting
 
-If you see Claude's raw reply (a summary and JSON) instead of a form in the Code tab, the mod didn't draw. Type `/a2ui-doctor` in the session: it prints the Claude Code version and the mode the mod is in. On Claude Code versions older than 2.1.332 (the version this plugin is tested against), the mod draws in a **compatible mode**: plain styling, text bars, Back / Next buttons instead of dragging. Please open an issue with the `/a2ui-doctor` output if a form still doesn't show.
+If you see Claude's raw reply (a summary and JSON) instead of a form in the Code tab, the mod didn't draw. Type `/a2ui-doctor` in the session: it prints the plugin and Claude Code versions. Please open an issue with that output.
 
 ## Where it shows
 
 | App | What you see |
 |---|---|
-| Claude Desktop app, Code tab (local session) | The full interactive UI, including dragging cards |
-| Claude Code in a terminal | The full UI with text-based bars; dragging needs fullscreen mode with mouse support |
-| VS Code extension | The UI as far as the panel draws it, without dragging |
+| Claude Desktop app, Code tab (local session) | The full interactive UI |
+| Claude Code in a terminal | The full UI, with text-based bars |
+| VS Code extension | The UI as far as the panel draws it |
 | Claude mobile apps, claude.ai, cloud sessions | Mods don't draw there. You see the **fallback text** Claude writes next to each form (the key facts and what to reply). The JSON sits in an HTML comment, which those apps normally hide |
 
 ## Supported A2UI
@@ -96,7 +95,7 @@ Messages: `createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface
 | Image, Video, AudioPlayer | Link |
 | Anything else | Its type name, with its children |
 
-Extra components (this plugin's own catalog, beyond A2UI's basic one): **Badge**, **Callout**, **KeyValue**, **Stat**, **Progress**, **BarChart**, **Avatar**, **Spacer**, **Carousel** (cards one at a time with Back / Next, dots, optional per-card choices and a Done action; with `"swipe": true` the cards can be dragged). The `a2ui` skill documents their props for Claude.
+Extra components (this plugin's own catalog, beyond A2UI's basic one): **Badge**, **Callout**, **KeyValue**, **Stat**, **Progress**, **BarChart**, **Avatar**, **Spacer**, **Carousel** (cards one at a time with Back / Next, dots, optional per-card choices and a Done action; ). The `a2ui` skill documents their props for Claude.
 
 Data bindings use `{"path": "/field"}` (JSON Pointer); paths inside a list template are relative to the item. Function calls such as `formatString` aren't evaluated. Button `functionCall` actions are ignored.
 
@@ -106,7 +105,6 @@ Data bindings use `{"path": "/field"}` (JSON Pointer); paths inside a list templ
 
 - **Theme**: `clean` (default; neutral, follows the app), `soft` (borderless tinted cards, labels above fields, roomier) or `accent` (colored borders and headings).
 - **Accent color**: `orange`, `blue`, `green`, `purple` or `teal`. Used by the accent theme, progress bars, charts and avatars.
-- **Swipe gestures**: on (default). Lets carousels with `"swipe": true` be dragged with the mouse. Turn off if cards don't show; Back / Next always work.
 - **Send button actions as**: `mod` (default), where Claude sees the action as coming from this plugin, or `user`, where it's sent as if you typed it.
 
 A surface can override the theme in `createSurface`, e.g. `"theme": {"name": "accent", "accent": "purple"}` or A2UI's `"theme": {"primaryColor": "#c83246"}`.
@@ -129,7 +127,7 @@ To load your local copy in the Desktop app, set `CLAUDE_CODE_PLUGIN_DIRS` to the
 
 - Terminal polish: wider layouts, a pane mode for long surfaces
 - More chart types (line, donut) and a Table component
-- Swipe: velocity-based flicks, a slight tilt while dragging, vertical swipe for a third choice
+- Drag-to-swipe cards: built in `experiments/swipe-deck/` (a Claude Code surface module), but kept out of the plugin because it stopped the whole mod from drawing in the Desktop app (0.4.0–0.5.0)
 - Bundle `@a2ui/web_core` for full spec coverage (functions, validation)
 - Update an existing surface in place when Claude sends `updateComponents` for the same `surfaceId`
 

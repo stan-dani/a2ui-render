@@ -71,12 +71,11 @@ test('carousel: back and forward, dots, choices remembered, Done sends decisions
     const id = 'w-' + surface
     const ui = await $.ui.mount(site(d.body, surface, id))
     const k = (s: string) => `${id}:triage:stack${s}`
-    const deckTitle = async () => JSON.stringify((await ui.find({ type: 'Client' }))?.props?.props?.cur ?? {})
-    expect(await deckTitle()).toContain('Checkout button does nothing on Safari')
+    expect(await ui.find({ type: 'Text', text: 'Checkout button does nothing on Safari' })).toBeDefined()
     expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
     // Next, then Back
     await ui.press({ key: k(':next') })
-    expect(await deckTitle()).toContain('Search returns duplicates after reindex')
+    expect(await ui.find({ type: 'Text', text: 'Search returns duplicates after reindex' })).toBeDefined()
     await ui.press({ key: k(':prev') })
     expect(await ui.find({ type: 'Text', text: '1 / 8' })).toBeDefined()
     // Choose "Fix now" on card 1: moves to card 2
