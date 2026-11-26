@@ -1,5 +1,7 @@
 import { expect, test } from 'claude-code/testing'
-import { demo } from './demo-fixture.ts'
+import { demos } from './demos.generated.ts'
+
+const demo = demos.find((d) => d.name === 'demo')!.body
 
 const reply = (body: string) => 'Here is the form:\n\n```a2ui\n' + body + '\n```\n\nPress a button when ready.'
 

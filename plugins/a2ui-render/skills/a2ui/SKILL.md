@@ -46,6 +46,36 @@ Rules:
 | `Tabs` | `tabs`: `[{"title": "One", "child": "tab1"}, ...]` |
 | `Image` | `url`, `description` (shown as a link) |
 
+### Extra components (a2ui-render catalog)
+
+These go beyond the A2UI basic catalog. Use them freely; other A2UI renderers may not know them.
+
+| Component | Props |
+|---|---|
+| `Badge` | `text`, `tone`: `neutral`, `info`, `success`, `warning`, `error` or `accent` |
+| `Callout` | `tone` (as Badge), optional `title`, `text` |
+| `KeyValue` | `items`: `[{"label": "Project", "value": "checkout-api"}, ...]` |
+| `Stat` | `label`, `value`, optional `delta` like `"+12%"` or `"-3"`, optional `goodWhen: "down"` when a fall is good |
+| `Progress` | `label`, `value`, optional `max` (default 1, or 100 when value > 1), optional `valueText`, optional `tone` |
+| `BarChart` | optional `title`, `items`: `[{"label": "web", "value": 31}, ...]` |
+| `Avatar` | `name`, optional `subtitle` |
+| `Spacer` | — (pushes the next items in a Row to the end) |
+
+Also:
+- `Text` takes an optional `tone` for colored text.
+- `Card` takes `"highlight": true` to draw it in the accent color (for a recommended option).
+- `Row` takes `"distribution": "spaceBetween"`, `"center"` or `"end"`, and `"alignment": "top"`.
+
+## Themes
+
+The user picks a default look in the plugin settings: `clean` (neutral), `soft` (tinted cards, labels above fields) or `accent` (colored borders and headings). Leave the theme alone unless it helps. To set one for a surface, add it to `createSurface`:
+
+```json
+{"version":"1.0","createSurface":{"surfaceId":"plans","catalogId":"basic","theme":{"name":"accent","accent":"purple"}}}
+```
+
+`theme` may be a name (`"soft"`), `{"name": ..., "accent": "orange|blue|green|purple|teal"}`, or A2UI's `{"primaryColor": "#c83246"}` for a custom accent. Use red (`#c83246`) only for destructive confirmations.
+
 Keep surfaces small: about 3–15 components. Nest at most a few levels.
 
 ## Example

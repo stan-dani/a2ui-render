@@ -59,7 +59,7 @@ export function parseA2UI(src) {
 export function buildSurfaces(messages) {
   const surfaces = new Map()
   const get = (id = 'default') => {
-    if (!surfaces.has(id)) surfaces.set(id, { id, components: new Map(), data: {}, root: 'root', catalogId: null })
+    if (!surfaces.has(id)) surfaces.set(id, { id, components: new Map(), data: {}, root: 'root', catalogId: null, theme: null })
     return surfaces.get(id)
   }
   for (const m of messages) {
@@ -67,6 +67,7 @@ export function buildSurfaces(messages) {
     if (m.createSurface) {
       const s = get(m.createSurface.surfaceId)
       s.catalogId = m.createSurface.catalogId ?? null
+      if (m.createSurface.theme !== undefined) s.theme = m.createSurface.theme
       if (m.createSurface.root) s.root = m.createSurface.root
     }
     const uc = m.updateComponents ?? m.surfaceUpdate

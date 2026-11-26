@@ -1,16 +1,51 @@
 {
   "name": "a2ui-render",
   "displayName": "A2UI Render (unofficial)",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Render A2UI surfaces from Claude's replies as native, interactive UI in Claude Code (Desktop Code tab and terminal). Button actions go back to Claude.",
-  "author": { "name": "a2ui-render contributors" },
+  "author": {
+    "name": "a2ui-render contributors"
+  },
   "license": "MIT",
-  "keywords": ["a2ui", "generative-ui", "mod", "ui"],
+  "keywords": [
+    "a2ui",
+    "generative-ui",
+    "mod",
+    "ui"
+  ],
   "userConfig": {
+    "theme": {
+      "type": "string",
+      "title": "Theme",
+      "description": "Default look for A2UI surfaces: clean (neutral, follows the app), soft (tinted cards, labels above fields), accent (colored borders and headings). A surface can pick its own with createSurface.theme.",
+      "options": [
+        "clean",
+        "soft",
+        "accent"
+      ],
+      "default": "clean"
+    },
+    "accent": {
+      "type": "string",
+      "title": "Accent color",
+      "description": "Color used by the accent theme, progress bars, charts and avatars.",
+      "options": [
+        "orange",
+        "blue",
+        "green",
+        "purple",
+        "teal"
+      ],
+      "default": "orange"
+    },
     "send_as": {
       "type": "string",
       "title": "Send button actions as",
-      "description": "mod (default): Claude sees the action as coming from this plugin. user: the action is sent as if you typed it.",
+      "description": "mod: Claude sees the action as coming from this plugin. user: the action is sent as if you typed it.",
+      "options": [
+        "mod",
+        "user"
+      ],
       "default": "mod"
     }
   }
