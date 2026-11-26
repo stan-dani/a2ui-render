@@ -4,6 +4,12 @@
 
 const OPEN = /^( {0,3})(`{3,}|~{3,})[ \t]*([^\s`]*)[^\n`]*$/
 const CLOSE = /^ {0,3}(`{3,}|~{3,})[ \t\r]*$/
+// The hidden form: the JSON inside an HTML comment, which Markdown viewers don't show.
+//   <!-- a2ui
+//   {...}
+//   -->
+const COMMENT_OPEN = /^ {0,3}<!--[ \t]*a2ui[ \t\r]*$/i
+const COMMENT_CLOSE = /^[ \t]*-->[ \t\r]*$/
 
 // Split Markdown into [{kind:'md', text}, {kind:'a2ui', text, closed}].
 // Other fenced blocks (```js etc.) stay inside Markdown segments untouched.
@@ -14,6 +20,18 @@ export function splitSegments(markdown) {
   let fence = null // { marker, isA2ui, buf }
   const flushMd = () => { if (md.length) { out.push({ kind: 'md', text: md.join('\n') }); md = [] } }
   for (const line of lines) {
+    if (!fence && COMMENT_OPEN.test(line)) {
+      flushMd()
+      fence = { marker: '-->', isA2ui: true, isComment: true, buf: [] }
+      continue
+    }
+    if (fence && fence.isComment) {
+      if (COMMENT_CLOSE.test(line)) {
+        out.push({ kind: 'a2ui', text: fence.buf.join('\n'), closed: true })
+        fence = null
+      } else fence.buf.push(line)
+      continue
+    }
     if (!fence) {
       const m = OPEN.exec(line)
       if (m) {

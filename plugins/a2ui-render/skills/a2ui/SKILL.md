@@ -5,13 +5,13 @@ description: Answer with an interactive A2UI surface (forms, choices, confirmati
 
 # Answering with A2UI
 
-The `a2ui-render` mod turns an ```` ```a2ui ```` block in your reply into real controls: text, cards, rows, buttons, text fields, checkboxes and pickers. When the user presses a button, you receive its action and the current form values as a new message.
+The `a2ui-render` mod turns an A2UI block in your reply into real controls: text, cards, rows, buttons, text fields, checkboxes and pickers. When the user presses a button, you receive its action and the current form values as a new message.
 
 Use a surface when it saves the user typing: picking one of several options, filling in more than one value, confirming something risky, or seeing a structured result. Don't use one for a plain answer that reads fine as text.
 
 ## Format
 
-Write normal Markdown around the block if it helps (one short sentence is usually enough). Put the UI in **one fenced block tagged `a2ui`**, with **one JSON message per line** (JSONL). No comments, no trailing commas.
+Write normal Markdown around the block if it helps (one short sentence is usually enough). Put the UI in **one `<!-- a2ui` … `-->` block**: the opening `<!-- a2ui` and the closing `-->` each on a line of their own, with **one JSON message per line** (JSONL) between them. No comments, no trailing commas. Being an HTML comment, the block stays invisible in apps that can't draw it (the mobile apps), which show the fallback instead. A fenced ```` ```a2ui ```` block works too, but shows as raw JSON there.
 
 **Always put a short fallback before the block**, between `<!-- a2ui:fallback -->` and `<!-- /a2ui:fallback -->`. The mod hides it where it draws the form; apps that can't draw (the Claude mobile apps, claude.ai) show it instead. Keep it to the essentials: the title, the current values or options as a short list, and what to reply, e.g. `*Reply with: “Deploy” or “Cancel”*`.
 
@@ -22,17 +22,18 @@ Write normal Markdown around the block if it helps (one short sentence is usuall
 *Reply with: “Deploy” or “Cancel”*
 <!-- /a2ui:fallback -->
 
-```a2ui
+<!-- a2ui
+{"version":"1.0","createSurface":{...}}
 ...
-```
+-->
 ````
 
 ````
-```a2ui
+<!-- a2ui
 {"version":"1.0","createSurface":{"surfaceId":"trip","catalogId":"basic"}}
 {"version":"1.0","updateComponents":{"surfaceId":"trip","components":[ ...components... ]}}
 {"version":"1.0","updateDataModel":{"surfaceId":"trip","path":"/","value":{ ...initial values... }}}
-```
+-->
 ````
 
 Rules:
@@ -100,11 +101,11 @@ Keep surfaces small: about 3–15 components. Nest at most a few levels.
 ## Example
 
 ````
-```a2ui
+<!-- a2ui
 {"version":"1.0","createSurface":{"surfaceId":"signup","catalogId":"basic"}}
 {"version":"1.0","updateComponents":{"surfaceId":"signup","components":[{"id":"root","component":"Card","child":"col"},{"id":"col","component":"Column","children":["title","email","plan","terms","actions"]},{"id":"title","component":"Text","text":"Create your account","variant":"h2"},{"id":"email","component":"TextField","label":"Email","value":{"path":"/email"},"placeholder":"name@company.com"},{"id":"plan","component":"ChoicePicker","label":"Plan","options":[{"label":"Free","value":"free"},{"label":"Pro","value":"pro"}],"value":{"path":"/plan"}},{"id":"terms","component":"CheckBox","label":"I accept the terms","value":{"path":"/terms"}},{"id":"actions","component":"Row","children":["cancel","submit"]},{"id":"cancel","component":"Button","child":"cancel_t","action":{"event":{"name":"cancel"}}},{"id":"cancel_t","component":"Text","text":"Cancel"},{"id":"submit","component":"Button","child":"submit_t","variant":"primary","action":{"event":{"name":"submit","context":{"email":{"path":"/email"},"plan":{"path":"/plan"}}}}},{"id":"submit_t","component":"Text","text":"Create account"}]}}
 {"version":"1.0","updateDataModel":{"surfaceId":"signup","path":"/","value":{"email":"","plan":"free","terms":false}}}
-```
+-->
 ````
 
 ## When an action comes back

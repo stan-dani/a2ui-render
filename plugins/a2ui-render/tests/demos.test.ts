@@ -125,3 +125,18 @@ test('fallback text is hidden where the form is drawn, and mobile gets plain Mar
   expect(String(md?.props?.text)).toContain('Reply with')
   expect(await mob.find({ type: 'Button' })).toBeUndefined()
 })
+
+test('the hidden <!-- a2ui --> form draws like a fenced block, and streams with a placeholder', async ($, on) => {
+  on('ui.render', () => ({ type: 'Text', props: {}, children: ['drawn by Claude Code'] }))
+  const d = demos.find((x) => x.name === 'demo')!
+  const full = '<!-- a2ui:fallback -->\n' + d.fallback + '\n<!-- /a2ui:fallback -->\n\n<!-- a2ui\n' + d.body + '\n-->'
+  for (const surface of ['desktop', 'terminal'] as const) {
+    const ui = await $.ui.mount({ plugin: 'a2ui-render', component: 'AssistantMessage', requestId: 'hc' + surface, surface, viewport: { columns: 100, rows: 40 }, props: { text: full, isSummary: false } } as any)
+    expect(await ui.find({ type: 'Text', text: 'drawn by Claude Code' })).toBeUndefined()
+    expect(await ui.find({ key: `hc${surface}:deploy:deploy_btn` })).toBeDefined()
+    expect(await ui.find({ type: 'Markdown', text: /Reply with/ })).toBeUndefined()
+    await ui.unmount()
+  }
+  const partial = await $.ui.mount({ plugin: 'a2ui-render', component: 'AssistantMessage', requestId: 'hp', surface: 'desktop', viewport: { columns: 100, rows: 40 }, props: { text: '<!-- a2ui\n' + d.body.split('\n')[0], isSummary: false } } as any)
+  expect(await partial.find({ type: 'Text', text: /Building UI/ })).toBeDefined()
+})

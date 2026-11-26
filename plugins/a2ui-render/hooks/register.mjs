@@ -18,7 +18,7 @@ import { parseA2UI, buildSurfaces, splitSegments, resolveValue, pointerGet, poin
 import { resolveTheme, initialsOf } from './themes.mjs'
 import { surfaceToMarkdown } from './plain.mjs'
 
-const FENCE = /^ {0,3}(?:`{3,}|~{3,})[ \t]*a2ui[ \t\r]*$/im
+const FENCE = /^ {0,3}(?:(?:`{3,}|~{3,})[ \t]*a2ui|<!--[ \t]*a2ui)[ \t\r]*$/im
 const MAX_MARKDOWN = 10000
 // Text Claude writes for apps that can't draw (the mobile apps). Hidden where we draw.
 const FALLBACK = /<!--\s*a2ui:fallback\s*-->[\s\S]*?<!--\s*\/a2ui:fallback\s*-->/g

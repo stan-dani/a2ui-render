@@ -2,7 +2,7 @@
 
 Render [A2UI](https://github.com/a2ui-project/a2ui) surfaces as **native, interactive UI in Claude Code**: in the Code tab of the Claude Desktop app, and in the terminal.
 
-When Claude's reply contains an ```` ```a2ui ```` block, this plugin draws it as real controls (text, cards, rows, text fields, checkboxes, pickers, buttons). When you press a button, the action and the form's current values go back to Claude, and Claude carries on.
+When Claude's reply contains an A2UI block (`<!-- a2ui … -->`, or a fenced ```` ```a2ui ```` block), this plugin draws it as real controls (text, cards, rows, text fields, checkboxes, pickers, buttons). When you press a button, the action and the form's current values go back to Claude, and Claude carries on.
 
 > Unofficial. Not affiliated with or endorsed by the A2UI project or Google. "A2UI" refers to the open protocol this plugin implements.
 
@@ -72,7 +72,7 @@ The mod hooks the `AssistantMessage` render site, only for messages with an `a2u
 | Claude Desktop app, Code tab (local session) | The full interactive UI, including dragging cards |
 | Claude Code in a terminal | The full UI with text-based bars; dragging needs fullscreen mode with mouse support |
 | VS Code extension | The UI as far as the panel draws it, without dragging |
-| Claude mobile apps, claude.ai, cloud sessions | Mods don't draw there. You see the **fallback text** Claude writes next to each form (the key facts and what to reply), followed by the raw JSON |
+| Claude mobile apps, claude.ai, cloud sessions | Mods don't draw there. You see the **fallback text** Claude writes next to each form (the key facts and what to reply). The JSON sits in an HTML comment, which those apps normally hide |
 
 ## Supported A2UI
 
