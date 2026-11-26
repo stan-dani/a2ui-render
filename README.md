@@ -65,6 +65,10 @@ scripts/build-demos.mjs             source of all demos: `node scripts/build-dem
 
 The mod hooks the `AssistantMessage` render site, only for messages with an `a2ui` fence. The text around the block is drawn as Markdown, and the block is drawn as native elements. Claude and the transcript keep the original JSON; only the drawing changes. While the block is still streaming you see "Building UI…" in place of raw JSON.
 
+## Troubleshooting
+
+If you see Claude's raw reply (a summary and JSON) instead of a form in the Code tab, the mod didn't draw. Type `/a2ui-doctor` in the session: it prints the Claude Code version and the mode the mod is in. On Claude Code versions older than 2.1.332 (the version this plugin is tested against), the mod draws in a **compatible mode**: plain styling, text bars, Back / Next buttons instead of dragging. Please open an issue with the `/a2ui-doctor` output if a form still doesn't show.
+
 ## Where it shows
 
 | App | What you see |

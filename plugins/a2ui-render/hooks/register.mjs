@@ -24,6 +24,22 @@ const MAX_MARKDOWN = 10000
 const FALLBACK = /<!--\s*a2ui:fallback\s*-->[\s\S]*?<!--\s*\/a2ui:fallback\s*-->/g
 // Apps that draw full controls. Anything else gets plain Markdown.
 const RICH = new Set(['terminal', 'desktop', 'vscode'])
+// The Claude Code version every feature here is tested against. Older versions get a
+// conservative drawing (see compat()), because one prop an older version doesn't know
+// makes it throw the whole drawing away and show the raw message.
+const TESTED = [2, 1, 332]
+let engineVersion = null // set at session.start
+
+function parseVersion(v) {
+  const m = /(\d+)\.(\d+)\.(\d+)/.exec(String(v ?? ''))
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null
+}
+function isOlder(a, b) {
+  for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i]
+  return false
+}
+// Unknown version (tests, or a host that doesn't say): draw everything.
+const isCompat = () => engineVersion !== null && isOlder(engineVersion, TESTED)
 
 // Per-surface live state, keyed by `${messageId}:${surfaceId}`.
 const live = new Map()
@@ -34,18 +50,43 @@ export function register(on, options = {}) {
   const sendMode = String(options.send_as ?? 'mod')
   const settings = { theme: String(options.theme ?? 'clean'), accent: String(options.accent ?? 'orange'), gestures: options.gestures !== false }
 
+  on('session.start', async ($, e, next) => {
+    try {
+      const v = await $.session.version()
+      engineVersion = parseVersion(typeof v === 'object' && v !== null ? (v.version ?? v.cli ?? JSON.stringify(v)) : v)
+    } catch (err) {
+      engineVersion = null
+    }
+    try {
+      await $.command.register({ name: 'a2ui-doctor', description: 'a2ui-render: show the Claude Code version and how forms are drawn', immediate: true })
+    } catch (err) {
+      // An older version may refuse the command; drawing still works.
+    }
+    return next(e)
+  })
+
+  on('command.run', { command: 'a2ui-doctor' }, async ($, e) => {
+    const v = engineVersion ? engineVersion.join('.') : 'unknown'
+    const mode = isCompat() ? `compatible mode (older than ${TESTED.join('.')}: plain styling, no dragging)` : 'full mode'
+    return { text: `a2ui-render 0.5.0 · Claude Code ${v} · ${mode} · theme ${settings.theme}, accent ${settings.accent}, gestures ${settings.gestures ? 'on' : 'off'}` }
+  })
+
   // A swipe deck (hooks/swipe-deck.mjs) posts {type: 'go', delta} when a card is swiped
   // away. Move the carousel and answer with the deck's new props.
-  on('ui.message', async ($, e, next) => {
-    const deck = decks.get(String(e.element ?? ''))
-    if (!deck) return next(e)
-    try {
-      const props = deck(e.data)
-      return props ? { props } : {}
-    } catch (err) {
-      return {}
-    }
-  })
+  try {
+    on('ui.message', async ($, e, next) => {
+      const deck = decks.get(String(e.element ?? ''))
+      if (!deck) return next(e)
+      try {
+        const props = deck(e.data)
+        return props ? { props } : {}
+      } catch (err) {
+        return {}
+      }
+    })
+  } catch (err) {
+    // A version without ui.message: carousels keep their Back / Next buttons.
+  }
 
   on('ui.render', { component: 'AssistantMessage', props: { text: FENCE } }, async ($, e, next) => {
     try {
@@ -58,8 +99,10 @@ export function register(on, options = {}) {
         redraw: () => $.ui.invalidate('ui.render'),
         submit: (text) => (sendMode === 'user' ? $.prompt.submit({ text, asUser: true }) : $.prompt.submit({ text })),
       }
-      const tree = renderMessage(e, els, io, settings)
-      return tree ?? next(e)
+      const compat = isCompat()
+      const tree = renderMessage(e, els, io, compat ? { ...settings, gestures: false } : settings)
+      if (!tree) return next(e)
+      return compat ? sanitize(tree) : tree
     } catch (err) {
       // Never break the transcript: fall back to Claude Code's own drawing.
       return next(e)
@@ -68,6 +111,36 @@ export function register(on, options = {}) {
 }
 
 // ---------------------------------------------------------------------------
+
+// Conservative drawing for older Claude Code versions: keep only the props the
+// earliest working version of this plugin used, and turn pictures into text.
+const SAFE = {
+  Box: new Set(['key', 'flexDirection', 'rowGap', 'columnGap', 'paddingX', 'paddingY', 'borderStyle', 'borderDimColor', 'alignItems', 'flexWrap']),
+  Text: new Set(['key', 'bold', 'dimColor', 'italic', 'underline', 'size', 'weight']),
+}
+const SAFE_SIZES = new Set(['title', 'heading'])
+const SAFE_GAPS = new Set(['sm', 'md'])
+function sanitize(node) {
+  if (!node || typeof node !== 'object' || Array.isArray(node)) return node
+  if (node.type === 'Svg') return { type: 'Text', props: { dimColor: true }, children: [String(node.props?.alt ?? '')] }
+  if (node.type === 'Client') return { type: 'Text', props: { dimColor: true }, children: ['(card)'] }
+  const allow = SAFE[node.type]
+  let props = node.props
+  if (allow && props) {
+    props = {}
+    for (const [k, val] of Object.entries(node.props)) {
+      if (!allow.has(k)) continue
+      if (k === 'size' && !SAFE_SIZES.has(val)) continue
+      if ((k === 'rowGap' || k === 'columnGap' || k === 'paddingX' || k === 'paddingY') && !SAFE_GAPS.has(val)) continue
+      if (k === 'borderStyle' && val !== 'round') { props[k] = 'round'; continue }
+      props[k] = val
+    }
+    // A Box that only had a background or colored border still reads as a card.
+    if (node.type === 'Box' && !props.borderStyle && (node.props.backgroundColor || node.props.borderColor)) { props.borderStyle = 'round'; props.borderDimColor = true }
+  }
+  const children = Array.isArray(node.children) ? node.children.map(sanitize) : node.children
+  return { ...node, ...(props ? { props } : {}), ...(children ? { children } : {}) }
+}
 
 function renderMessage(e, els, io, settings) {
   const text = String(e.props?.text ?? '').replace(FALLBACK, '')
