@@ -1,0 +1,17 @@
+{
+  "name": "a2ui-render",
+  "displayName": "A2UI Render (unofficial)",
+  "version": "0.1.0",
+  "description": "Render A2UI surfaces from Claude's replies as native, interactive UI in Claude Code (Desktop Code tab and terminal). Button actions go back to Claude.",
+  "author": { "name": "a2ui-render contributors" },
+  "license": "MIT",
+  "keywords": ["a2ui", "generative-ui", "mod", "ui"],
+  "userConfig": {
+    "send_as": {
+      "type": "string",
+      "title": "Send button actions as",
+      "description": "mod (default): Claude sees the action as coming from this plugin. user: the action is sent as if you typed it.",
+      "default": "mod"
+    }
+  }
+}

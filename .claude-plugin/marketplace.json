@@ -1,0 +1,12 @@
+{
+  "name": "a2ui-render",
+  "description": "A2UI Render: native A2UI surfaces in Claude Code (unofficial, not affiliated with the A2UI project)",
+  "owner": { "name": "a2ui-render contributors" },
+  "plugins": [
+    {
+      "name": "a2ui-render",
+      "source": "./plugins/a2ui-render",
+      "description": "Render A2UI surfaces from Claude's replies as native, interactive UI in Claude Code"
+    }
+  ]
+}
